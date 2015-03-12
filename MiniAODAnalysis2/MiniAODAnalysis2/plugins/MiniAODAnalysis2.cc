@@ -5,7 +5,8 @@
 // 
 /**\class MiniAODAnalysis2 MiniAODAnalysis2.cc MiniAODAnalysis2/MiniAODAnalysis2/plugins/MiniAODAnalysis2.cc
 
- Description: [one line class summary]
+ Description: 
+ Simple analysis class to dump output in a plain rootfile
 
  Implementation:
      [Notes on implementation]
@@ -49,10 +50,8 @@
 #include "DataFormats/Candidate/interface/Candidate.h"
 #include "DataFormats/HepMCCandidate/interface/GenParticle.h"
 
-#include "TH1D.h"
 #include "TFile.h"
 #include "TTree.h"
-#include "TCanvas.h"
 //
 //
 // class declaration
@@ -83,41 +82,43 @@ class MiniAODAnalysis2 : public edm::EDAnalyzer {
       edm::EDGetTokenT<pat::MuonCollection> muonToken_;
       edm::EDGetTokenT<pat::ElectronCollection> electronToken_;
       
-      
+   
+      // the output file and tree
       TFile *fOutput = new TFile("RecoOutput.root", "RECREATE");
       TTree *tOutput = new TTree("RecoData", "RecoData");
   
+
+      // the variables used for output
+      // missing transverse energy
       double met = 0.;
+      
+      // the jet variables
       std::vector<double> *jet_eta = new std::vector<double>;
       std::vector<double> *jet_phi = new std::vector<double>;
       std::vector<double> *jet_pt = new std::vector<double>;
-      std::vector<double> *jet_secVertex3D = new std::vector<double>;
-      std::vector<double> *jet_secVertexSig = new std::vector<double>;
-      std::vector<double> *jet_bJetTag = new std::vector<double>;
-      
+     
+      // the muon variables
       std::vector<double> *muon_px = new std::vector<double>;
       std::vector<double> *muon_py = new std::vector<double>;
       std::vector<double> *muon_pz = new std::vector<double>;
       std::vector<double> *muon_eta = new std::vector<double>;
       std::vector<double> *muon_phi = new std::vector<double>;
       
+      // the electron variables
       std::vector<double> *electron_px = new std::vector<double>;
       std::vector<double> *electron_py = new std::vector<double>;
       std::vector<double> *electron_pz = new std::vector<double>;
       std::vector<double> *electron_eta = new std::vector<double>;
       std::vector<double> *electron_phi = new std::vector<double>;
      
+      // the trigger bits and names
       std::vector<int> *triggerBits = new std::vector<int>;
       std::vector<std::string> *triggerNames = new std::vector<std::string>;
 
+      // the jet constituents 
       std::vector<std::vector<double> >* jet_constVertex_x = new std::vector<std::vector<double> >;
       std::vector<std::vector<double> >* jet_constVertex_y = new std::vector<std::vector<double> >;
       std::vector<std::vector<double> >* jet_constVertex_z = new std::vector<std::vector<double> >;
-
-      std::vector<std::vector<double> >* jet_constclosestVertex_x = new std::vector<std::vector<double> >;
-      std::vector<std::vector<double> >* jet_constclosestVertex_y = new std::vector<std::vector<double> >;
-      std::vector<std::vector<double> >* jet_constclosestVertex_z = new std::vector<std::vector<double> >;
-      
       std::vector<std::vector<double> >* jet_const_pt      = new std::vector<std::vector<double> >;
       std::vector<std::vector<double> >* jet_const_eta     = new std::vector<std::vector<double> >;
       std::vector<std::vector<double> >* jet_const_phi     = new std::vector<std::vector<double> >;
@@ -126,12 +127,14 @@ class MiniAODAnalysis2 : public edm::EDAnalyzer {
       std::vector<std::vector<double> >* jet_const_closestVertex_dz = new std::vector<std::vector<double> >;
       std::vector<std::vector<double> >* jet_const_closestVertex_d = new std::vector<std::vector<double> >;
 
+      // the primary vertex information
       std::vector<double> *vertex_x = new std::vector<double>;
       std::vector<double> *vertex_y = new std::vector<double>;
       std::vector<double> *vertex_z = new std::vector<double>;
       std::vector<double> *vertex_nTracks = new std::vector<double>;
       std::vector<double> *vertex_pt = new std::vector<double>;
 
+      // the secondary vertices
       std::vector<double> *secVertex_x = new std::vector<double>;
       std::vector<double> *secVertex_y = new std::vector<double>;
       std::vector<double> *secVertex_z = new std::vector<double>;
@@ -171,6 +174,8 @@ MiniAODAnalysis2::MiniAODAnalysis2(const edm::ParameterSet& iConfig):
   {
    //now do what ever initialization is needed
    
+   // define the triggers we (might) want to use
+   // these seem to be interesting for us
    triggerNames->push_back( "HLT_PFJet260_v1" );
    triggerNames->push_back( "HLT_JetE30_NoBPTX_v1" );
    triggerNames->push_back( "HLT_JetE30_NoBPTX3BX_NoHalo_v1" );
@@ -178,18 +183,13 @@ MiniAODAnalysis2::MiniAODAnalysis2(const edm::ParameterSet& iConfig):
    triggerNames->push_back( "HLT_JetE70_NoBPTX3BX_NoHalo_v1" );
    triggerNames->push_back( "HLT_PFMET170_NoiseCleaned_v1" );
    
+   // set the output branches for the tree
    tOutput -> Branch("RecoJet_eta", &jet_eta );
    tOutput -> Branch("RecoJet_phi", &jet_phi );
    tOutput -> Branch("RecoJet_pt", &jet_pt );
-   tOutput -> Branch("RecoJet_secVertex3D", &jet_secVertex3D );
-   tOutput -> Branch("RecoJet_secVertexSig", &jet_secVertexSig );
-   tOutput -> Branch("RecoJet_bJetTag", &jet_bJetTag );
    tOutput -> Branch("RecoJet_constVertex_x", &jet_constVertex_x );
    tOutput -> Branch("RecoJet_constVertex_y", &jet_constVertex_y );
    tOutput -> Branch("RecoJet_constVertex_z", &jet_constVertex_z );
-   tOutput -> Branch("RecoJet_constclosestVertex_x", &jet_constclosestVertex_x );
-   tOutput -> Branch("RecoJet_constclosestVertex_y", &jet_constclosestVertex_y );
-   tOutput -> Branch("RecoJet_constclosestVertex_z", &jet_constclosestVertex_z );
    tOutput -> Branch("RecoJet_const_pt", &jet_const_pt );
    tOutput -> Branch("RecoJet_const_charge", &jet_const_charge );
    tOutput -> Branch("RecoJet_const_closestVertex_dxy", &jet_const_closestVertex_dxy );
@@ -239,6 +239,9 @@ void
 MiniAODAnalysis2::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetup)
 {
    using namespace edm;
+
+   // clear all variables
+   met = 0.;
    muon_px->clear();
    muon_py->clear();
    muon_pz->clear();
@@ -253,15 +256,9 @@ MiniAODAnalysis2::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetu
    jet_eta->clear();
    jet_phi->clear();
    jet_pt->clear();
-   jet_secVertex3D->clear();
-   jet_secVertexSig->clear();
-   jet_bJetTag->clear();
    jet_constVertex_x->clear();
    jet_constVertex_y->clear();
    jet_constVertex_z->clear();
-   jet_constclosestVertex_x->clear();
-   jet_constclosestVertex_y->clear();
-   jet_constclosestVertex_z->clear();
    jet_const_pt->clear();
    jet_const_eta->clear();
    jet_const_phi->clear();
@@ -278,6 +275,7 @@ MiniAODAnalysis2::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetu
    vertex_nTracks -> clear();
    vertex_pt -> clear();
   
+   // get all the physics objects from the miniAOD
    edm::Handle<pat::ElectronCollection> electrons;
    iEvent.getByToken(electronToken_, electrons);
    
@@ -314,37 +312,21 @@ MiniAODAnalysis2::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetu
    Handle<pat::PackedCandidateCollection> pfs;
    iEvent.getByToken(pfToken_, pfs);
 
-  
-
-   /*
-    * leave out the trigger for the moment 
-    */
-   
+ 
+    
    const edm::TriggerNames &names = iEvent.triggerNames(*evTriggerBits);
-   //bool passTrigger = false;
+   bool passTrigger = false;
    for(unsigned int i = 0; i < evTriggerBits->size(); ++i ) {
       for( unsigned int j = 0; j < triggerNames->size(); ++j ) {
         if( names.triggerName(i) == triggerNames->at(j) ) {
           triggerBits->push_back( evTriggerBits->accept(i) ? 1 : 0 );
+          if( evTriggerBits->accept(i) ) passTrigger = true;
         }
       }
-      /*
-      if( names.triggerName(i) == "HLT_PFJet260_v1" || names.triggerName(i) == " HLT_PFMET170_NoiseCleaned_v1" ) {
-        if( triggerBits->accept(i) ) {
-          passTrigger = true;
-        }
-      }
-      */
    }
 
    
-   /* save the jet information
-    * pt
-    * eta
-    * phi
-    * for the jet daughters: the distance to and the position of the closest vertex for all jet constituents
-    */
- 
+   // muons 
    for( const pat::Muon &m : *muons ) {
       if( !m.isLooseMuon() || m.pt() < 5. ) continue;
       muon_px->push_back( m.px() );
@@ -354,6 +336,7 @@ MiniAODAnalysis2::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetu
       muon_eta->push_back( m.eta() );
    }
    
+   // electrons
    for( const pat::Electron &e : *electrons ) {
       if(e.pt() < 5. ) continue;
       electron_px->push_back( e.px() );
@@ -363,16 +346,14 @@ MiniAODAnalysis2::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetu
       electron_eta->push_back( e.eta() );
    }
 
+   // jets
    int ctrJet = -1;
    for( const reco::PFJet &j : *jets2 ) {
      ctrJet += 1;
-     std::vector<int> score( vertices->size(), 0 );
+    
      std::vector<double> constVert_x;
      std::vector<double> constVert_y;
      std::vector<double> constVert_z;
-     std::vector<double> constclosestVert_x;
-     std::vector<double> constclosestVert_y;
-     std::vector<double> constclosestVert_z;
      std::vector<double> const_pt;
      std::vector<double> const_eta;
      std::vector<double> const_phi;
@@ -381,20 +362,26 @@ MiniAODAnalysis2::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetu
      std::vector<double> constVert_closestVertex_dz;
      std::vector<double> constVert_closestVertex_d;
      std::vector<double> average_distance( vertices->size(), 0. );
+     
+     
+     // loop over the jet constituents to find the vertex closest to each:
      for( unsigned int iD = 0; iD < j.numberOfDaughters(); ++iD ) {
-       
+        
         const pat::PackedCandidate &dau1 = dynamic_cast<const pat::PackedCandidate &>(*j.daughter(iD));
         pat::PackedCandidate dau(dau1);
         
+        // minimum distances (total, xy and z) for the jet constituent to any vertex
         double dMin = 100000.;
         double dxyMin = 10000.;
         double dzMin = 10000.;
         int ctr = -1;
         
+        // first loop over the primary vertices
         for( const reco::Vertex &v : *vertices ) {
             ctr += 1;
             double d = sqrt( dau.dxy( v.position() ) * dau.dxy( v.position() ) + dau.dz( v.position() )*dau.dz( v.position() ) );
-
+            
+            // if the vertex is closer than the current reference vertex, set dMin, dxyMin, dzMin, and also change the vertex of reference
             if( d < dMin ) {
               dMin = d;
               dxyMin = dau.dxy( v.position() );
@@ -405,7 +392,8 @@ MiniAODAnalysis2::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetu
             }
         }
   
-        
+        // now do the same for the secondary vertices
+        // however, for some reason, I have to use additional variable here, jet constitutent won't accept a VertexCompositePtrCandidate as a new reference
         double jetVertex_x = -10000.;
         double jetVertex_y = -10000.;
         double jetVertex_z = -10000.;
@@ -426,13 +414,10 @@ MiniAODAnalysis2::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetu
         
 
 
-
+        // now fill all the variables for the jet constituent
         constVert_closestVertex_dxy.push_back( dxyMin );
         constVert_closestVertex_dz.push_back( dzMin );
         constVert_closestVertex_d.push_back( dMin );
-        constclosestVert_x.push_back( dau.vertex().x() );//Ref().get()->position().x() );
-        constclosestVert_y.push_back( dau.vertex().y() );//Ref().get()->position().y() );
-        constclosestVert_z.push_back( dau.vertex().z() );//Ref().get()->position().z() );
         constVert_x.push_back( ctr != -1 ? dau.vertexRef().get()->position().x() : jetVertex_x );
         constVert_y.push_back( ctr != -1 ? dau.vertexRef().get()->position().y() : jetVertex_y );
         constVert_z.push_back( ctr != -1 ? dau.vertexRef().get()->position().z() : jetVertex_z );
@@ -442,18 +427,14 @@ MiniAODAnalysis2::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetu
         const_charge.push_back( dau.charge() );
      }
 
+
+     // and fill allthe jet variables
      jet_pt->push_back( j.pt() );
      jet_eta->push_back( j.eta() );
      jet_phi->push_back( j.phi() );
-     jet_secVertex3D->push_back(0. );// j.userFloat("vtx3DVal") );
-     jet_secVertexSig->push_back( 0. );//j.userFloat("vtx3DSig") );
-     jet_bJetTag->push_back( 0. );//j.bDiscriminator("simpleSecondaryVertexHighEffBJetTags") );
      jet_constVertex_x->push_back( constVert_x ); 
      jet_constVertex_y->push_back( constVert_y ); 
      jet_constVertex_z->push_back( constVert_z ); 
-     jet_constclosestVertex_x->push_back( constclosestVert_x ); 
-     jet_constclosestVertex_y->push_back( constclosestVert_y ); 
-     jet_constclosestVertex_z->push_back( constclosestVert_z ); 
      jet_const_closestVertex_dxy->push_back(constVert_closestVertex_dxy);
      jet_const_closestVertex_dz->push_back(constVert_closestVertex_dz);
      jet_const_closestVertex_d->push_back(constVert_closestVertex_d);
@@ -463,7 +444,8 @@ MiniAODAnalysis2::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetu
      jet_const_charge->push_back( const_charge );
    }
   
-   
+  
+   // now fill the primary vertex information
    for( const reco::Vertex &v : *vertices ) {
       vertex_x -> push_back( v.x() );
       vertex_y -> push_back( v.y() );
@@ -472,15 +454,18 @@ MiniAODAnalysis2::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetu
       vertex_pt -> push_back( v.p4().pt() );
    }
    
+   // now fill the secondary vertex information
    for( const reco::VertexCompositePtrCandidate &v : *secVertices ) {
       secVertex_x -> push_back( v.vx() );
       secVertex_y -> push_back( v.vy() );
       secVertex_z -> push_back( v.vz() );
-      std::cout << "GOT A SECONDARY VERTEX AT : " << v.vx() << " " << v.vy() << " " << v.vz() << std::endl;
    }
 
+   // and fill the met
    const pat::MET &themet = mets->front();
    met = themet.pt(); 
+
+   // finally, write it to the tree
    tOutput->Fill(); 
 
 }
@@ -496,6 +481,7 @@ void
 MiniAODAnalysis2::endJob() 
 {
 
+  // save the output tree and file
   gDirectory = fOutput;
   tOutput->Write();
   fOutput->Close();
