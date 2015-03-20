@@ -315,20 +315,34 @@ MiniAODAnalysis2::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetu
  
     
    const edm::TriggerNames &names = iEvent.triggerNames(*evTriggerBits);
-   bool passTrigger = false;
+   //bool passTrigger = false;
    for(unsigned int i = 0; i < evTriggerBits->size(); ++i ) {
       for( unsigned int j = 0; j < triggerNames->size(); ++j ) {
         if( names.triggerName(i) == triggerNames->at(j) ) {
           triggerBits->push_back( evTriggerBits->accept(i) ? 1 : 0 );
-          if( evTriggerBits->accept(i) ) passTrigger = true;
+          //if( evTriggerBits->accept(i) ) passTrigger = true;
         }
       }
    }
 
    
-   // muons 
+   // muons
+   // currently using the muon id taken from here:
+   // https://twiki.cern.ch/twiki/bin/view/CMSPublic/SWGuideMuonId#Loose_Muon
+   // using loose PF combined relative isolation cut (see https://twiki.cern.ch/twiki/bin/viewauth/CMS/SusyObjectExperts)
+   // adding a pT cut of 15 GeV
+   // not using a cut that constrains the muon to the pv
    for( const pat::Muon &m : *muons ) {
-      if( !m.isLooseMuon() || m.pt() < 5. ) continue;
+      if( !m.isPFMuon() ) continue;
+      if( !( m.isGlobalMuon() || m.isTrackerMuon()) ) continue;
+      if( !m.isLooseMuon() ) continue;
+      if( m.pt() < 15. ) continue;
+      if( fabs(m.eta()) > 2.5 ) continue;
+      double pfRelIso = ( m.pfIsolationR04().sumChargedHadronPt 
+                        + std::max(0., m.pfIsolationR04().sumNeutralHadronEt + m.pfIsolationR04().sumPhotonEt - 0.5*m.pfIsolationR04().sumPUPt ) ) 
+                        / m.pt();
+      if( pfRelIso > 0.2 ) continue;
+
       muon_px->push_back( m.px() );
       muon_py->push_back( m.pz() );
       muon_pz->push_back( m.py() );
@@ -337,8 +351,24 @@ MiniAODAnalysis2::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetu
    }
    
    // electrons
+   // implemented the electron id taken from here:
+   // https://twiki.cern.ch/twiki/bin/viewauth/CMS/Eg2012AnalysesSupportingMaterial#Electrons
+   // and also
+   // https://twiki.cern.ch/twiki/bin/viewauth/CMS/SusyObjectExperts
+   // not using a cut that constraints the electron to the PV
    for( const pat::Electron &e : *electrons ) {
-      if(e.pt() < 5. ) continue;
+      if(e.pt() < 15. ) continue;
+      if( !(e.isEE() || e.isEB() ) ) continue;
+      if( e.isEB() && e.hadronicOverEm() >= 0.15 ) continue;
+      if( e.isEB() && (  fabs(e.deltaPhiSuperClusterTrackAtVtx()) >= 0.8 
+                      || fabs(e.deltaEtaSuperClusterTrackAtVtx()) >= 0.007
+                      || e.scSigmaIEtaIEta() >= 0.01 ) )
+      continue;
+      if( e.isEE() && ( fabs(e.deltaPhiSuperClusterTrackAtVtx()) >= 0.7 
+                      || fabs(e.deltaEtaSuperClusterTrackAtVtx()) >= 0.01
+                      || e.scSigmaIEtaIEta() >= 0.03 ) ) 
+      continue;
+      
       electron_px->push_back( e.px() );
       electron_py->push_back( e.pz() );
       electron_pz->push_back( e.py() );
@@ -347,10 +377,24 @@ MiniAODAnalysis2::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetu
    }
 
    // jets
+   // using the tight selection from:
+   // https://twiki.cern.ch/twiki/bin/viewauth/CMS/JetID#Recommendations_for_13_TeV_data
    int ctrJet = -1;
    for( const reco::PFJet &j : *jets2 ) {
+     
+     if( j.neutralHadronEnergyFraction() >= 0.90 ) continue;
+     if( j.neutralEmEnergyFraction() >= 0.90 ) continue;
+     if( j.getPFConstituents().size() <= 1 ) continue;
+     if( j.muonEnergyFraction() >= 0.8 ) continue;
+     if( j.chargedEmEnergyFraction() >= 0.9 ) continue;
+     if( fabs(j.eta()) > 2.4 ) {
+        if( j.chargedHadronEnergyFraction() <= 0. ) continue;
+        if( j.chargedMultiplicity() <= 0. ) continue;
+        if( j.chargedEmEnergyFraction() >= 0.99 ) continue;
+     }
+     
      ctrJet += 1;
-    
+     
      std::vector<double> constVert_x;
      std::vector<double> constVert_y;
      std::vector<double> constVert_z;
