@@ -356,6 +356,7 @@ MiniAODAnalysis2::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetu
    // and also
    // https://twiki.cern.ch/twiki/bin/viewauth/CMS/SusyObjectExperts
    // not using a cut that constraints the electron to the PV
+   // calculate the isolation according to: https://twiki.cern.ch/twiki/bin/view/CMSPublic/WorkBookMiniAOD
    for( const pat::Electron &e : *electrons ) {
       if(e.pt() < 15. ) continue;
       if( !(e.isEE() || e.isEB() ) ) continue;
@@ -368,7 +369,32 @@ MiniAODAnalysis2::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetu
                       || fabs(e.deltaEtaSuperClusterTrackAtVtx()) >= 0.01
                       || e.scSigmaIEtaIEta() >= 0.03 ) ) 
       continue;
-      
+     
+      double charged = 0.;
+      double neutral = 0.;
+      double pileup = 0.;
+      std::vector<reco::CandidatePtr> footprint;
+      for( unsigned int i = 0; i < e.numberOfSourceCandidatePtrs(); ++i ) {
+         footprint.push_back( e.sourceCandidatePtr(i) );
+      }
+      for( unsigned int i = 0; i <= pfs->size(); ++i ) {
+         const pat::PackedCandidate &pf = (*pfs)[i];
+         if( deltaR( pf, e) < 0.3 ) {
+            if( std::find(footprint.begin(), footprint.end(), reco::CandidatePtr(pfs,i)) != footprint.end() ) continue;
+            if( pf.charge() == 0 ) {
+               if( pf.pt() > 0.5 ) neutral += pf.pt();
+            }
+            else if ( pf.fromPV() >= 2 ) {
+               charged += pf.pt();
+            }
+            else {
+               if( pf.pt() > 0.5 ) pileup += pf.pt();
+            }
+         }  
+      }
+      double iso = charged + std::max(0.0, neutral-0.5*pileup) / e.pt();
+      if( iso >= 0.15 ) continue;
+
       electron_px->push_back( e.px() );
       electron_py->push_back( e.pz() );
       electron_pz->push_back( e.py() );
