@@ -369,7 +369,7 @@ MiniAODAnalysis2::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetu
                       || fabs(e.deltaEtaSuperClusterTrackAtVtx()) >= 0.01
                       || e.scSigmaIEtaIEta() >= 0.03 ) ) 
       continue;
-     
+       
       double charged = 0.;
       double neutral = 0.;
       double pileup = 0.;
@@ -377,8 +377,10 @@ MiniAODAnalysis2::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetu
       for( unsigned int i = 0; i < e.numberOfSourceCandidatePtrs(); ++i ) {
          footprint.push_back( e.sourceCandidatePtr(i) );
       }
-      for( unsigned int i = 0; i <= pfs->size(); ++i ) {
+      
+      for( unsigned int i = 0; i < pfs->size(); ++i ) {
          const pat::PackedCandidate &pf = (*pfs)[i];
+         
          if( deltaR( pf, e) < 0.3 ) {
             if( std::find(footprint.begin(), footprint.end(), reco::CandidatePtr(pfs,i)) != footprint.end() ) continue;
             if( pf.charge() == 0 ) {
@@ -394,7 +396,7 @@ MiniAODAnalysis2::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetu
       }
       double iso = charged + std::max(0.0, neutral-0.5*pileup) / e.pt();
       if( iso >= 0.15 ) continue;
-
+    
       electron_px->push_back( e.px() );
       electron_py->push_back( e.pz() );
       electron_pz->push_back( e.py() );
@@ -407,12 +409,13 @@ MiniAODAnalysis2::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetu
    // https://twiki.cern.ch/twiki/bin/viewauth/CMS/JetID#Recommendations_for_13_TeV_data
    int ctrJet = -1;
    for( const reco::PFJet &j : *jets2 ) {
-     
+        
      if( j.neutralHadronEnergyFraction() >= 0.90 ) continue;
      if( j.neutralEmEnergyFraction() >= 0.90 ) continue;
-     if( j.getPFConstituents().size() <= 1 ) continue;
+     if( j.numberOfDaughters() <= 1 ) continue;
      if( j.muonEnergyFraction() >= 0.8 ) continue;
      if( j.chargedEmEnergyFraction() >= 0.9 ) continue;
+     
      if( fabs(j.eta()) > 2.4 ) {
         if( j.chargedHadronEnergyFraction() <= 0. ) continue;
         if( j.chargedMultiplicity() <= 0. ) continue;
