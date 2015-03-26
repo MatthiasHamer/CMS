@@ -4,11 +4,7 @@
 
 int main( int argc, char **argv ) {
 
-    vector<string> fileNames;
-    for( int iFile = 1; iFile < argc; ++iFile ) {
-        fileNames.push_back( string(argv[iFile]) );
-    }
-    LLGAnalysis *analysis = LLGAnalysis::GetInstance(fileNames, "RecoData" );
+    LLGAnalysis *analysis = LLGAnalysis::GetInstance( argv[1] );
     analysis->Init();
     analysis->RunEventLoop();
     analysis->FinishRun();

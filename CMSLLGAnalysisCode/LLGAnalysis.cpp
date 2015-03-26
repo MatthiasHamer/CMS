@@ -1,16 +1,37 @@
 #include "LLGAnalysis.h"
 #include "TGraphAsymmErrors.h"
+#include <fstream>
 
-LLGAnalysis* LLGAnalysis::GetInstance( vector<string> inputFileNames, string inputTreeName ) {
+LLGAnalysis* LLGAnalysis::GetInstance( char *configFileName ) {
     if( !_instance ) {
-        _instance = new LLGAnalysis( inputFileNames, inputTreeName );
+        _instance = new LLGAnalysis( configFileName );
     }
     return _instance;
 }
 
-LLGAnalysis::LLGAnalysis( vector<string> inputFileNames, string inputTreeName ) {
-    _inputFileNames = inputFileNames;    
-    _inputTreeName = inputTreeName;
+LLGAnalysis::LLGAnalysis( char *configFileName ) {
+    
+    
+    // Setup the default values for the cuts:
+    JET_PT_CUT = 20;
+    JET_ETA_CUT = 5.0;
+    MUON_PT_CUT = 10.;
+    ELECTRON_PT_CUT = 10.;
+    MET_CUT = 150.;
+    
+    ifstream configFile( configFileName, ios::in );
+    while( configFile.good() ) {
+        string key, value;
+        configFile >> key >> ws >> value;
+        if( configFile.eof() ) break;
+        if( key == "InputFile"        ) _inputFileNames.push_back( value ); 
+        if( key == "InputTree"        ) _inputTreeName = value; 
+        if( key == "JET_PT_CUT"       ) JET_PT_CUT = atof(value.c_str());
+        if( key == "JET_ETA_CUT"      ) JET_ETA_CUT = atof(value.c_str());
+        if( key == "MUON_PT_CUT"      ) MUON_PT_CUT = atof(value.c_str()); 
+        if( key == "ELECTRON_PT_CUT"  ) ELECTRON_PT_CUT = atof(value.c_str()); 
+        if( key == "MET_CUT"          ) MET_CUT = atof(value.c_str()); 
+    }
 }
 
 void LLGAnalysis::MakeEfficiencyPlot( TH1D hpass, TH1D htotal, TCanvas *c, string triggerName ) {
@@ -107,12 +128,6 @@ bool LLGAnalysis::Init() {
     gSystem->Load("Loader_C.so");
     setStyle(1.0,true,0.15);
    
-    JET_PT_CUT = 20;
-    JET_ETA_CUT = 5.0;
-    MUON_PT_CUT = 10.;
-    ELECTRON_PT_CUT = 10.;
-    MET_CUT = 150.;
-    
     _inputTree = new TChain(_inputTreeName.c_str());
     for( vector<string>::iterator itr = _inputFileNames.begin(); itr != _inputFileNames.end(); ++itr ) {
         _inputTree -> Add( (*itr).c_str() );  

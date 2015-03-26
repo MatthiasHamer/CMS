@@ -24,7 +24,7 @@ using namespace std;
 
 class LLGAnalysis {
     public:
-        static LLGAnalysis* GetInstance(vector<string> inputFileNames, string inputTreeName );
+        static LLGAnalysis* GetInstance( char* configFileName );
         ~LLGAnalysis() {}
         
         vector<double> CalculateVertex( vector<double> x, vector<double> y, vector<double> z, vector<double> weight, vector<int> charge, vector<double> distance, unsigned int &nConsidered, double &weightednConsidered, vector<double> &error ); 
@@ -43,7 +43,7 @@ class LLGAnalysis {
 
     private:
         LLGAnalysis() {}
-        LLGAnalysis( vector<string> inputFileNames, string inputTreeName );
+        LLGAnalysis( char* configFileName );
         
         map<string, int>        _cutFlow;
         map<string, TH1D>       _histograms1D;
