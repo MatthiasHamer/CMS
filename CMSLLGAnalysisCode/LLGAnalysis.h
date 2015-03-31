@@ -24,7 +24,7 @@ using namespace std;
 
 class LLGAnalysis {
     public:
-        static LLGAnalysis* GetInstance(vector<string> inputFileNames, string inputTreeName );
+        static LLGAnalysis* GetInstance( char* configFileName );
         ~LLGAnalysis() {}
         
         vector<double> CalculateVertex( vector<double> x, vector<double> y, vector<double> z, vector<double> weight, vector<int> charge, vector<double> distance, unsigned int &nConsidered, double &weightednConsidered, vector<double> &error ); 
@@ -39,11 +39,11 @@ class LLGAnalysis {
         void makeHist( string nametitle, int nbinsx, double xmin, double xmax, int nbinsy, double ymin, double ymax, string xtitle, string ytitle, string ztitle, string drawOption = "", double xAxisOffset = 1., double yAxisOffset = 1.2, double zAxisOffset = 1. ); 
         void makeHist( string nametitle, int nbins, double xmin, double xmax, string xtitle, string ytitle, string drawOption = "", double xAxisOffset = 1., double yAxisOffset = 1.2 );
         void setStyle(double ytoff = 1.0, bool marker = true, double left_margin = 0.15); 
-
+        void MakeEfficiencyPlot( TH1D hpass, TH1D htotal, TCanvas *c, string triggerName = "");
 
     private:
         LLGAnalysis() {}
-        LLGAnalysis( vector<string> inputFileNames, string inputTreeName );
+        LLGAnalysis( char* configFileName );
         
         map<string, int>        _cutFlow;
         map<string, TH1D>       _histograms1D;

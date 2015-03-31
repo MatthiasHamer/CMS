@@ -1,15 +1,55 @@
 #include "LLGAnalysis.h"
+#include "TGraphAsymmErrors.h"
+#include <fstream>
 
-LLGAnalysis* LLGAnalysis::GetInstance( vector<string> inputFileNames, string inputTreeName ) {
+LLGAnalysis* LLGAnalysis::GetInstance( char *configFileName ) {
     if( !_instance ) {
-        _instance = new LLGAnalysis( inputFileNames, inputTreeName );
+        _instance = new LLGAnalysis( configFileName );
     }
     return _instance;
 }
 
-LLGAnalysis::LLGAnalysis( vector<string> inputFileNames, string inputTreeName ) {
-    _inputFileNames = inputFileNames;    
-    _inputTreeName = inputTreeName;
+LLGAnalysis::LLGAnalysis( char *configFileName ) {
+    
+    
+    // Setup the default values for the cuts:
+    JET_PT_CUT = 20;
+    JET_ETA_CUT = 5.0;
+    MUON_PT_CUT = 10.;
+    ELECTRON_PT_CUT = 10.;
+    MET_CUT = 150.;
+    
+    ifstream configFile( configFileName, ios::in );
+    while( configFile.good() ) {
+        string key, value;
+        configFile >> key >> ws >> value;
+        if( configFile.eof() ) break;
+        if( key == "InputFile"        ) _inputFileNames.push_back( value ); 
+        if( key == "InputTree"        ) _inputTreeName = value; 
+        if( key == "JET_PT_CUT"       ) JET_PT_CUT = atof(value.c_str());
+        if( key == "JET_ETA_CUT"      ) JET_ETA_CUT = atof(value.c_str());
+        if( key == "MUON_PT_CUT"      ) MUON_PT_CUT = atof(value.c_str()); 
+        if( key == "ELECTRON_PT_CUT"  ) ELECTRON_PT_CUT = atof(value.c_str()); 
+        if( key == "MET_CUT"          ) MET_CUT = atof(value.c_str()); 
+    }
+}
+
+void LLGAnalysis::MakeEfficiencyPlot( TH1D hpass, TH1D htotal, TCanvas *c, string triggerName ) {
+    
+    TGraphAsymmErrors geff;
+    geff.BayesDivide( &hpass, &htotal );
+    geff.GetXaxis()->SetTitle( hpass.GetXaxis()->GetTitle() );
+    string ytitle = "#varepsilon (" + triggerName + ")";
+    geff.GetYaxis()->SetTitle( ytitle.c_str() );
+    string efftitle = "efficiency_" + triggerName;
+    geff.SetNameTitle(efftitle.c_str(), efftitle.c_str());
+    geff.SetMarkerColor(kBlue);
+    geff.Draw("APZ"); 
+    for( vector<string>::iterator itr_f = _plotFormats.begin(); itr_f != _plotFormats.end(); ++itr_f ) {
+        string thisPlotName = efftitle + (*itr_f);
+        c->Print( thisPlotName.c_str() );
+    }
+
 }
 
 vector<double> LLGAnalysis::CalculateVertex( vector<double> x, vector<double> y, vector<double> z, vector<double> weight, vector<int> charge, vector<double> distance, unsigned int &nConsidered, double &weightednConsidered, vector<double> &error ) {
@@ -88,12 +128,6 @@ bool LLGAnalysis::Init() {
     gSystem->Load("Loader_C.so");
     setStyle(1.0,true,0.15);
    
-    JET_PT_CUT = 20;
-    JET_ETA_CUT = 2.4;
-    MUON_PT_CUT = 10.;
-    ELECTRON_PT_CUT = 10.;
-    MET_CUT = 150.;
-    
     _inputTree = new TChain(_inputTreeName.c_str());
     for( vector<string>::iterator itr = _inputFileNames.begin(); itr != _inputFileNames.end(); ++itr ) {
         _inputTree -> Add( (*itr).c_str() );  
@@ -105,7 +139,10 @@ bool LLGAnalysis::Init() {
     makeHist( "selected_nPV75", 4, -0.5, 3.5, "# PV with at least 1 Jet > 75 GeV", "Number of Events" );
     makeHist( "selected_nJetsToSV", 7, -0.5, 6.5, "# Jets associated to SV", "Number of Vertices" ); 
     makeHist( "selected_nSV", 5, -0.5, 4.5, "# SV with at least 1 Jet", "Number of Events" ); 
-
+    makeHist( "MET_allEvents", 50, 0., 2000., "MET [GeV]", "Number of Events" );
+    makeHist( "MET_HLT_PFMET170_NoiseCleaned_v1", 50, 0., 2000., "MET [GeV]", "Number of Events" );
+    makeHist( "jet1_pt_allEvents", 50, 0., 1000., "Leading Jet p_{T} [GeV]", "Number of Events");
+    makeHist( "jet1_pt_HLT_PFJet260_v1", 50, 0., 1000., "Leading Jet p_{T} [GeV]", "Number of Events");
 
     // allocate memory for all the variables
     recoJet_pt = new vector<double>;
@@ -231,10 +268,30 @@ void LLGAnalysis::RunEventLoop( int nEntriesMax ) {
 
         _inputTree->GetEntry(i);
         _cutFlow.at("NoCut") += 1;
+        
+
+        _histograms1D.at("MET_allEvents").Fill( met );
+        int leadingJet = -1;
+        double leadingJetPt = 0.;
+        for( unsigned int iJet = 0; iJet < recoJet_pt->size(); ++iJet ) {
+            if( recoJet_pt->at(iJet) > leadingJetPt ) {
+                leadingJetPt = recoJet_pt->at(iJet);
+                leadingJet = iJet;
+            }
+        }
+        if( leadingJet >= 0 ) _histograms1D.at("jet1_pt_allEvents").Fill( recoJet_pt->at(leadingJet) );
+
 
         bool passTrigger = false;
         for( unsigned int iTrig = 0; iTrig < triggerNames->size(); ++iTrig ) {
             if( (triggerNames->at(iTrig) == "HLT_PFJet260_v1" || triggerNames->at(iTrig) == "HLT_PFMET170_NoiseCleaned_v1") && triggerBits->at(iTrig) == 1 ) passTrigger = true;
+            
+            if( triggerNames->at(iTrig) == "HLT_PFMET170_NoiseCleaned_v1" && triggerBits->at(iTrig) == 1 ) {
+                _histograms1D.at("MET_HLT_PFMET170_NoiseCleaned_v1").Fill( met );
+            }
+            if( triggerNames->at(iTrig) == "HLT_PFJet260_v1" && triggerBits->at(iTrig) == 1 ) {
+                _histograms1D.at("jet1_pt_HLT_PFJet260_v1" ).Fill( recoJet_pt->at(leadingJet) );
+            }
         }
         
         if( !passTrigger ) continue;
@@ -393,7 +450,9 @@ void LLGAnalysis::FinishRun() {
         }
     }
     
-    
+    MakeEfficiencyPlot( _histograms1D.at("MET_HLT_PFMET170_NoiseCleaned_v1"), _histograms1D.at("MET_allEvents"), &c, "HLT_PFMET170_NoiseCleaned_v1" ); 
+    MakeEfficiencyPlot( _histograms1D.at("jet1_pt_HLT_PFJet260_v1"), _histograms1D.at("jet1_pt_allEvents"), &c, "HLT_PFJet260_v1" ); 
+
     cout << endl << "RECO CUT FLOW " << endl;
     cout << "-----------------------------" << endl;
     for( map<string,int>::iterator itr = _cutFlow.begin(); itr != _cutFlow.end(); ++itr ) {
