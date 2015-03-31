@@ -139,6 +139,12 @@ class MiniAODAnalysis2 : public edm::EDAnalyzer {
       std::vector<double> *secVertex_y = new std::vector<double>;
       std::vector<double> *secVertex_z = new std::vector<double>;
 
+
+      // event metadata
+      int RunNumber = 0;
+      int EventNumber = 0;
+      int LuminosityBlock = 0;
+
       //virtual void beginRun(edm::Run const&, edm::EventSetup const&) override;
       //virtual void endRun(edm::Run const&, edm::EventSetup const&) override;
       //virtual void beginLuminosityBlock(edm::LuminosityBlock const&, edm::EventSetup const&) override;
@@ -218,6 +224,9 @@ MiniAODAnalysis2::MiniAODAnalysis2(const edm::ParameterSet& iConfig):
    tOutput -> Branch("RecoVertex_nTracks", &vertex_nTracks );
    tOutput -> Branch("RecoVertex_pt", &vertex_pt );
    tOutput -> Branch("MET", &met );
+   tOutput -> Branch("EventNumber", &EventNumber );
+   tOutput -> Branch("RunNumber", &RunNumber );
+   tOutput -> Branch("LuminosityBlock", &LuminosityBlock );
 }
 
 
@@ -312,7 +321,15 @@ MiniAODAnalysis2::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetu
    Handle<pat::PackedCandidateCollection> pfs;
    iEvent.getByToken(pfToken_, pfs);
 
- 
+
+   edm::EventAuxiliary aux = iEvent.eventAuxiliary();
+   edm::EventID id = aux.id();
+  
+   EventNumber = id.event();
+   RunNumber = id.run();
+   LuminosityBlock = id.luminosityBlock();
+
+
     
    const edm::TriggerNames &names = iEvent.triggerNames(*evTriggerBits);
    //bool passTrigger = false;
@@ -408,8 +425,8 @@ MiniAODAnalysis2::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetu
    // using the tight selection from:
    // https://twiki.cern.ch/twiki/bin/viewauth/CMS/JetID#Recommendations_for_13_TeV_data
    int ctrJet = -1;
-   for( const reco::PFJet &j : *jets2 ) {
-        
+   for( const pat::Jet &j : *jets ) {
+     
      if( j.neutralHadronEnergyFraction() >= 0.90 ) continue;
      if( j.neutralEmEnergyFraction() >= 0.90 ) continue;
      if( j.numberOfDaughters() <= 1 ) continue;
@@ -435,7 +452,6 @@ MiniAODAnalysis2::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetu
      std::vector<double> constVert_closestVertex_dz;
      std::vector<double> constVert_closestVertex_d;
      std::vector<double> average_distance( vertices->size(), 0. );
-     
      
      // loop over the jet constituents to find the vertex closest to each:
      for( unsigned int iD = 0; iD < j.numberOfDaughters(); ++iD ) {
