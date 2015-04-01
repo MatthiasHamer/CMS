@@ -334,6 +334,7 @@ MiniAODAnalysis2::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetu
    const edm::TriggerNames &names = iEvent.triggerNames(*evTriggerBits);
    //bool passTrigger = false;
    for(unsigned int i = 0; i < evTriggerBits->size(); ++i ) {
+      //std::cout << "got trigger " << names.triggerName(i) << std::endl;
       for( unsigned int j = 0; j < triggerNames->size(); ++j ) {
         if( names.triggerName(i) == triggerNames->at(j) ) {
           triggerBits->push_back( evTriggerBits->accept(i) ? 1 : 0 );
@@ -438,7 +439,7 @@ MiniAODAnalysis2::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetu
         if( j.chargedMultiplicity() <= 0. ) continue;
         if( j.chargedEmEnergyFraction() >= 0.99 ) continue;
      }
-     
+     if( j.pt() < 10. ) continue; 
      ctrJet += 1;
      
      std::vector<double> constVert_x;
@@ -458,23 +459,42 @@ MiniAODAnalysis2::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetu
         
         const pat::PackedCandidate &dau1 = dynamic_cast<const pat::PackedCandidate &>(*j.daughter(iD));
         pat::PackedCandidate dau(dau1);
-        
+       
         // minimum distances (total, xy and z) for the jet constituent to any vertex
         double dMin = 100000.;
         double dxyMin = 10000.;
         double dzMin = 10000.;
         int ctr = -1;
+       
+        // get the unity vector pointing in the direction of the momentum and a reference point to build a self-made pseudo track
+        // the 'track' is then (x(t), y(t), z(t) ) = (x,y,z) + t*(px,py,pz);
+        // tmin, the time parameter for the point of closest approach is determined by minimising d = sqrt( (vx - x(t))^2 + (vy - y(t))^2 + (vz - z(t))^2);
+        double x = dau.vertex().x();
+        double y = dau.vertex().y();
+        double z = dau.vertex().z();
+        double px = dau.px()/dau.p();
+        double py = dau.py()/dau.p();
+        double pz = dau.pz()/dau.p();
         
         // first loop over the primary vertices
         for( const reco::Vertex &v : *vertices ) {
             ctr += 1;
-            double d = sqrt( dau.dxy( v.position() ) * dau.dxy( v.position() ) + dau.dz( v.position() )*dau.dz( v.position() ) );
-            
+            double pv_x = v.position().x();
+            double pv_y = v.position().y();
+            double pv_z = v.position().z();
+            double tmin = px*(x-pv_x) + py*(y-pv_y) + pz*(z-pv_z);
+            double dx_min = pv_x - x + tmin*px;
+            double dy_min = pv_y - y + tmin*py;
+            double dz_min = pv_z - z + tmin*pz;
+           
+            double dxy = sqrt(dx_min*dx_min + dy_min*dy_min);
+            double d = sqrt( dxy*dxy + dz_min*dz_min);
+
             // if the vertex is closer than the current reference vertex, set dMin, dxyMin, dzMin, and also change the vertex of reference
             if( d < dMin ) {
               dMin = d;
-              dxyMin = dau.dxy( v.position() );
-              dzMin = dau.dz( v.position() );
+              dxyMin = dxy;
+              dzMin = dz_min;
               const reco::VertexRef vref( vertices, ctr );
               dau.setVertexRef( vref );
               
@@ -487,13 +507,21 @@ MiniAODAnalysis2::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetu
         double jetVertex_y = -10000.;
         double jetVertex_z = -10000.;
         for( const reco::VertexCompositePtrCandidate &v : *secVertices ) {
-            reco::Vertex::Point p;
-            p.SetXYZ( v.vx(), v.vy(), v.vz() );
-            double d = sqrt( dau.dxy( p ) * dau.dxy( p ) + dau.dz( p )*dau.dz( p ) );
+            double pv_x = v.vx();
+            double pv_y = v.vy();
+            double pv_z = v.vz();
+            double tmin = px*(x-pv_x) + py*(y-pv_y) + pz*(z-pv_z);
+            double dx_min = pv_x - x + tmin*px;
+            double dy_min = pv_y - y + tmin*py;
+            double dz_min = pv_z - z + tmin*pz;
+           
+            double dxy = sqrt(dx_min*dx_min + dy_min*dy_min);
+            double d = sqrt( dxy*dxy + dz_min*dz_min);
+            
             if( d < dMin ) {
               dMin = d;
-              dxyMin = dau.dxy( p );
-              dzMin = dau.dz( p );
+              dxyMin = dxy;
+              dzMin = dz_min;
               ctr = -1;  
               jetVertex_x = v.vx();
               jetVertex_y = v.vy();
@@ -501,8 +529,6 @@ MiniAODAnalysis2::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetu
           }
         }
         
-
-
         // now fill all the variables for the jet constituent
         constVert_closestVertex_dxy.push_back( dxyMin );
         constVert_closestVertex_dz.push_back( dzMin );
@@ -515,7 +541,6 @@ MiniAODAnalysis2::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetu
         const_phi.push_back( dau.phi() );
         const_charge.push_back( dau.charge() );
      }
-
 
      // and fill allthe jet variables
      jet_pt->push_back( j.pt() );
