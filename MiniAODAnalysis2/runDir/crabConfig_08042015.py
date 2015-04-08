@@ -3,6 +3,7 @@ config = config()
 
 config.General.requestName = 'LLGDV_Analysis_ttbar_PU20bx25' 
 config.General.workArea = 'crabJobs'
+config.General.transferOutputs = True
 
 config.JobType.pluginName = 'Analysis'
 config.JobType.psetName = 'JobConfig_08042015.py'
