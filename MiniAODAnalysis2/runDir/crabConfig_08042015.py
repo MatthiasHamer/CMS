@@ -7,6 +7,7 @@ config.General.transferOutputs = True
 
 config.JobType.pluginName = 'Analysis'
 config.JobType.psetName = 'JobConfig_08042015.py'
+config.JobType.outputFiles = ['RecoOutput.root']
 
 config.Data.inputDataset = '/TT_Tune4C_13TeV-pythia8-tauola/Phys14DR-PU20bx25_tsg_PHYS14_25_V1-v1/MINIAODSIM'
 config.Data.inputDBS = 'global'
