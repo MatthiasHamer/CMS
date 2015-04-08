@@ -173,7 +173,6 @@ class MiniAODAnalysis2 : public edm::EDAnalyzer {
 MiniAODAnalysis2::MiniAODAnalysis2(const edm::ParameterSet& iConfig):
   metToken_(consumes<pat::METCollection>(iConfig.getParameter<edm::InputTag>("mets"))),
   jetToken_(consumes<pat::JetCollection>(iConfig.getParameter<edm::InputTag>("jets"))),
-  jetToken2_(consumes<reco::PFJetCollection>(iConfig.getParameter<edm::InputTag>("jets2"))),
   vtxToken_(consumes<reco::VertexCollection>(iConfig.getParameter<edm::InputTag>("vertices"))),
   secVtxToken_(consumes<reco::VertexCompositePtrCandidateCollection>(iConfig.getParameter<edm::InputTag>("secVertices"))),
   triggerBits_(consumes<edm::TriggerResults>(iConfig.getParameter<edm::InputTag>("bits"))),
@@ -319,9 +318,6 @@ MiniAODAnalysis2::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetu
    Handle<pat::JetCollection> jets;
    iEvent.getByToken( jetToken_, jets );
    
-   Handle<reco::PFJetCollection> jets2;
-   iEvent.getByToken( jetToken2_, jets2 );
-  
    Handle<reco::VertexCollection> vertices;
    iEvent.getByToken( vtxToken_, vertices );
    
