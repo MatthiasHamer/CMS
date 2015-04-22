@@ -385,7 +385,7 @@ MiniAODAnalysis2::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetu
    }
    
    // store only events without muons
-   if( muon_px->size() > 0 ) return;
+   // if( muon_px->size() > 0 ) return;
 
 
    // electrons
@@ -443,7 +443,7 @@ MiniAODAnalysis2::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetu
    }
 
    // store only events without electrons
-   if( electron_px->size() > 0 ) return;
+   // if( electron_px->size() > 0 ) return;
 
 
 
