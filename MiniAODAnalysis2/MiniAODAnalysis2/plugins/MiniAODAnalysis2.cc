@@ -81,7 +81,8 @@ class MiniAODAnalysis2 : public edm::EDAnalyzer {
       edm::EDGetTokenT<pat::PackedCandidateCollection> pfToken_;
       edm::EDGetTokenT<pat::MuonCollection> muonToken_;
       edm::EDGetTokenT<pat::ElectronCollection> electronToken_;
-      
+    
+      std::string _bTagAlgorithm;
    
       // the output file and tree
       TFile *fOutput = new TFile("RecoOutput.root", "RECREATE");
@@ -96,7 +97,8 @@ class MiniAODAnalysis2 : public edm::EDAnalyzer {
       std::vector<double> *jet_eta = new std::vector<double>;
       std::vector<double> *jet_phi = new std::vector<double>;
       std::vector<double> *jet_pt = new std::vector<double>;
-     
+      std::vector<double> *jet_btag = new std::vector<double>;
+
       // the muon variables
       std::vector<double> *muon_px = new std::vector<double>;
       std::vector<double> *muon_py = new std::vector<double>;
@@ -181,7 +183,8 @@ MiniAODAnalysis2::MiniAODAnalysis2(const edm::ParameterSet& iConfig):
   packedGenToken_(consumes<edm::View<pat::PackedGenParticle> >(iConfig.getParameter<edm::InputTag>("packed"))),
   pfToken_(consumes<pat::PackedCandidateCollection>(iConfig.getParameter<edm::InputTag>("pfCands"))),
   muonToken_(consumes<pat::MuonCollection>(iConfig.getParameter<edm::InputTag>("muons"))),
-  electronToken_(consumes<pat::ElectronCollection>(iConfig.getParameter<edm::InputTag>("electrons")))
+  electronToken_(consumes<pat::ElectronCollection>(iConfig.getParameter<edm::InputTag>("electrons"))),
+  _bTagAlgorithm(iConfig.getParameter<std::string>("bTagAlgorithm"))
   {
    //now do what ever initialization is needed
    
@@ -199,6 +202,7 @@ MiniAODAnalysis2::MiniAODAnalysis2(const edm::ParameterSet& iConfig):
    tOutput -> Branch("RecoJet_eta", &jet_eta );
    tOutput -> Branch("RecoJet_phi", &jet_phi );
    tOutput -> Branch("RecoJet_pt", &jet_pt );
+   tOutput -> Branch("RecoJet_bTagInfo", &jet_btag );
    tOutput -> Branch("RecoJet_constVertex_x", &jet_constVertex_x );
    tOutput -> Branch("RecoJet_constVertex_y", &jet_constVertex_y );
    tOutput -> Branch("RecoJet_constVertex_z", &jet_constVertex_z );
@@ -349,7 +353,7 @@ MiniAODAnalysis2::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetu
    const edm::TriggerNames &names = iEvent.triggerNames(*evTriggerBits);
    bool passTrigger = false;
    for(unsigned int i = 0; i < evTriggerBits->size(); ++i ) {
-      //std::cout << "got trigger " << names.triggerName(i) << std::endl;
+      std::cout << "got trigger " << names.triggerName(i) << std::endl;
       for( unsigned int j = 0; j < triggerNames->size(); ++j ) {
         if( names.triggerName(i) == triggerNames->at(j) ) {
           triggerBits->push_back( evTriggerBits->accept(i) ? 1 : 0 );
@@ -612,6 +616,7 @@ MiniAODAnalysis2::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetu
      jet_pt->push_back( j.pt() );
      jet_eta->push_back( j.eta() );
      jet_phi->push_back( j.phi() );
+     jet_btag->push_back( j.bDiscriminator(_bTagAlgorithm) );
      jet_constVertex_x->push_back( constVert_x ); 
      jet_constVertex_y->push_back( constVert_y ); 
      jet_constVertex_z->push_back( constVert_z ); 
