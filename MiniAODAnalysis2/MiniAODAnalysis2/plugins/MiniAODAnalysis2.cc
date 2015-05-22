@@ -81,9 +81,12 @@ class MiniAODAnalysis2 : public edm::EDAnalyzer {
       edm::EDGetTokenT<pat::PackedCandidateCollection> pfToken_;
       edm::EDGetTokenT<pat::MuonCollection> muonToken_;
       edm::EDGetTokenT<pat::ElectronCollection> electronToken_;
-    
-      std::string _bTagAlgorithm;
-   
+
+
+      // the b-tagging algorithms for which we want the numbers
+      std::vector<std::string> btagAlgorithms;
+
+
       // the output file and tree
       TFile *fOutput = new TFile("RecoOutput.root", "RECREATE");
       TTree *tOutput = new TTree("RecoData", "RecoData");
@@ -97,7 +100,7 @@ class MiniAODAnalysis2 : public edm::EDAnalyzer {
       std::vector<double> *jet_eta = new std::vector<double>;
       std::vector<double> *jet_phi = new std::vector<double>;
       std::vector<double> *jet_pt = new std::vector<double>;
-      std::vector<double> *jet_btag = new std::vector<double>;
+      std::vector<std::vector<double>* > *jet_btagInfo = new std::vector<std::vector<double>* >;
 
       // the muon variables
       std::vector<double> *muon_px = new std::vector<double>;
@@ -183,8 +186,7 @@ MiniAODAnalysis2::MiniAODAnalysis2(const edm::ParameterSet& iConfig):
   packedGenToken_(consumes<edm::View<pat::PackedGenParticle> >(iConfig.getParameter<edm::InputTag>("packed"))),
   pfToken_(consumes<pat::PackedCandidateCollection>(iConfig.getParameter<edm::InputTag>("pfCands"))),
   muonToken_(consumes<pat::MuonCollection>(iConfig.getParameter<edm::InputTag>("muons"))),
-  electronToken_(consumes<pat::ElectronCollection>(iConfig.getParameter<edm::InputTag>("electrons"))),
-  _bTagAlgorithm(iConfig.getParameter<std::string>("bTagAlgorithm"))
+  electronToken_(consumes<pat::ElectronCollection>(iConfig.getParameter<edm::InputTag>("electrons")))
   {
    //now do what ever initialization is needed
    
@@ -196,13 +198,28 @@ MiniAODAnalysis2::MiniAODAnalysis2(const edm::ParameterSet& iConfig):
     * triggerNames->push_back( "HLT_JetE50_NoBPTX3BX_NoHalo_v1" );
     * triggerNames->push_back( "HLT_JetE70_NoBPTX3BX_NoHalo_v1" );
    */
+   
    triggerNames->push_back( "HLT_PFMET170_NoiseCleaned_v1" );
    
+  
+   // the btag algorithms for which we want infos
+   btagAlgorithms.push_back("jetBProbabilityBJetTags");
+   btagAlgorithms.push_back("jetProbabilityBJetTags");
+   btagAlgorithms.push_back("trackCountingHighPurBJetTags");
+   btagAlgorithms.push_back("trackCountingHighEffBJetTags");
+   btagAlgorithms.push_back("combinedInclusiveSecondaryVertexV2BJetTags");
+   for( unsigned int iBtagAlgo = 0; iBtagAlgo < btagAlgorithms.size(); ++iBtagAlgo ) {
+      jet_btagInfo->push_back( new std::vector<double> );
+   }
+
    // set the output branches for the tree
    tOutput -> Branch("RecoJet_eta", &jet_eta );
    tOutput -> Branch("RecoJet_phi", &jet_phi );
    tOutput -> Branch("RecoJet_pt", &jet_pt );
-   tOutput -> Branch("RecoJet_bTagInfo", &jet_btag );
+   for( unsigned int iBtagAlgo = 0; iBtagAlgo < btagAlgorithms.size(); ++iBtagAlgo ) {
+     std::string branchname = "RecoJet_btag_" + btagAlgorithms.at(iBtagAlgo);
+     tOutput -> Branch( branchname.c_str(), &(jet_btagInfo->at(iBtagAlgo)) ); 
+   }
    tOutput -> Branch("RecoJet_constVertex_x", &jet_constVertex_x );
    tOutput -> Branch("RecoJet_constVertex_y", &jet_constVertex_y );
    tOutput -> Branch("RecoJet_constVertex_z", &jet_constVertex_z );
@@ -243,6 +260,7 @@ MiniAODAnalysis2::MiniAODAnalysis2(const edm::ParameterSet& iConfig):
    tOutput -> Branch("EventNumber", &EventNumber );
    tOutput -> Branch("RunNumber", &RunNumber );
    tOutput -> Branch("LuminosityBlock", &LuminosityBlock );
+  
 }
 
 
@@ -264,7 +282,7 @@ void
 MiniAODAnalysis2::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetup)
 {
    using namespace edm;
-
+  
    // clear all variables
    met = 0.;
    muon_px->clear();
@@ -305,7 +323,10 @@ MiniAODAnalysis2::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetu
    secVertex_z -> clear();
    vertex_nTracks -> clear();
    vertex_pt -> clear();
-  
+   for( unsigned int iBtagAlgo = 0; iBtagAlgo < btagAlgorithms.size(); ++iBtagAlgo ) {
+     jet_btagInfo->at(iBtagAlgo)->clear();
+   }
+
    // get all the physics objects from the miniAOD
    edm::Handle<pat::ElectronCollection> electrons;
    iEvent.getByToken(electronToken_, electrons);
@@ -353,7 +374,6 @@ MiniAODAnalysis2::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetu
    const edm::TriggerNames &names = iEvent.triggerNames(*evTriggerBits);
    bool passTrigger = false;
    for(unsigned int i = 0; i < evTriggerBits->size(); ++i ) {
-      std::cout << "got trigger " << names.triggerName(i) << std::endl;
       for( unsigned int j = 0; j < triggerNames->size(); ++j ) {
         if( names.triggerName(i) == triggerNames->at(j) ) {
           triggerBits->push_back( evTriggerBits->accept(i) ? 1 : 0 );
@@ -471,12 +491,7 @@ MiniAODAnalysis2::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetu
      if( j.pt() < 10. ) continue;
      
      ctrJet += 1;
-     /*
-     std::cout << "jet #" << ctrJet << "pt,eta,phi " <<j.pt() <<"," <<j.eta() <<","<<j.phi()  << " with " << j.numberOfDaughters() << std::endl;
-     std::cout << "    corrected p4.pt() at level 0: " << j.correctedP4(0).pt() 
-                                                                                             << " corrected p4.pt() at level 1: " << j.correctedP4(1).pt() 
-                                                                                             << " corrected p4.pt() at level 2 :" << j.correctedP4(2).pt() << std::endl;
-     */
+     
      std::vector<double> constVert_x;
      std::vector<double> constVert_y;
      std::vector<double> constVert_z;
@@ -540,21 +555,6 @@ MiniAODAnalysis2::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetu
            
             double dxy = sqrt(dx_min*dx_min + dy_min*dy_min);
             double d = sqrt( dxy*dxy + dz_min*dz_min);
-            /*
-            double tmin2D = dau.px()/dau.pt()*(x-pv_x) + dau.py()/dau.pt()*(y-pv_y);
-            double dx_min2D = pv_x - x + tmin2D*dau.px()/dau.pt();
-            double dy_min2D = pv_y - y + tmin2D*dau.py()/dau.pt();
-            double dxy2D = sqrt( dx_min2D*dx_min2D + dy_min2D*dy_min2D);
-            std::cout << std::endl;
-            std::cout << std::endl;
-            std::cout << "vertex position : " << v.position().x() << " " << v.position().y() << " " << v.position().z() << std::endl;
-            std::cout << "particle properties: " << dau.px() << " " << dau.py() << " " << dau.pz() << " " << dau.phi() << " " << dau.p() << " " << dau.pt() << std::endl;
-            std::cout << "reference point    : " << x << " " << y << " " << z << std::endl;
-            std::cout << "got mini times " << tmin << " and " << tmin2D << std::endl;
-            std::cout << "got       " << dxy << " and " << d  << " from "  << dx_min << " " << dy_min << " " << dz_min << std::endl;
-            std::cout << "2D        " << dxy2D << " from " << dx_min2D << " " << dy_min2D << std::endl;
-            std::cout << "compare : " << dau.dxy( v.position() ) << " and " << sqrt( dau.dxy(v.position())*dau.dxy(v.position()) + dau.dz(v.position())*dau.dz(v.position())) << std::endl;
-            */
 
             // if the vertex is closer than the current reference vertex, set dMin, dxyMin, dzMin, and also change the vertex of reference
             if( d < dMin ) {
@@ -616,7 +616,9 @@ MiniAODAnalysis2::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetu
      jet_pt->push_back( j.pt() );
      jet_eta->push_back( j.eta() );
      jet_phi->push_back( j.phi() );
-     jet_btag->push_back( j.bDiscriminator(_bTagAlgorithm) );
+     for( unsigned int iBtagAlgo = 0; iBtagAlgo < btagAlgorithms.size(); ++iBtagAlgo ) { 
+       jet_btagInfo->at(iBtagAlgo)->push_back( j.bDiscriminator( btagAlgorithms.at(iBtagAlgo) ) );
+     } 
      jet_constVertex_x->push_back( constVert_x ); 
      jet_constVertex_y->push_back( constVert_y ); 
      jet_constVertex_z->push_back( constVert_z ); 
