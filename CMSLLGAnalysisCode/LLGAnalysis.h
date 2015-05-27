@@ -63,6 +63,7 @@ class LLGAnalysis {
         vector<double> *recoJet_closestVertex_x; 
         vector<double> *recoJet_closestVertex_y; 
         vector<double> *recoJet_closestVertex_z; 
+        vector<double> *recoJet_btag_combinedInclusiveSecondaryVertexV2BJetTags;
         vector<double> *muon_px; 
         vector<double> *muon_py; 
         vector<double> *muon_pz; 
