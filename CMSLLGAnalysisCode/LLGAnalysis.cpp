@@ -143,6 +143,7 @@ bool LLGAnalysis::Init() {
     makeHist( "MET_HLT_PFMET170_NoiseCleaned_v1", 50, 0., 2000., "MET [GeV]", "Number of Events" );
     makeHist( "jet1_pt_allEvents", 50, 0., 1000., "Leading Jet p_{T} [GeV]", "Number of Events");
     makeHist( "jet1_pt_HLT_PFJet260_v1", 50, 0., 1000., "Leading Jet p_{T} [GeV]", "Number of Events");
+    makeHist( "nBjetAtSV", 5, -0.5, 4.5, "Number of b-jets associated to SV", "Number of SV" );
 
     // allocate memory for all the variables
     recoJet_pt = new vector<double>;
@@ -154,6 +155,7 @@ bool LLGAnalysis::Init() {
     recoJet_closestVertex_x = new vector<double>;
     recoJet_closestVertex_y = new vector<double>;
     recoJet_closestVertex_z = new vector<double>;
+    recoJet_btag_combinedInclusiveSecondaryVertexV2BJetTags = new vector<double>;
     
     muon_px = new vector<double>;
     muon_py = new vector<double>;
@@ -210,6 +212,7 @@ bool LLGAnalysis::Init() {
     _inputTree->SetBranchAddress("RecoJet_secVertex3D", &recoJet_secVertex3D );
     _inputTree->SetBranchAddress("RecoJet_secVertexSig", &recoJet_secVertexSig );
     _inputTree->SetBranchAddress("RecoJet_bJetTag", &recoJet_bJetTag );
+    _inputTree->SetBranchAddress("RecoJet_btag_combinedInclusiveSecondaryVertexV2BJetTags", &recoJet_btag_combinedInclusiveSecondaryVertexV2BJetTags );
     _inputTree->SetBranchAddress("RecoJet_closestVertex_x", &recoJet_closestVertex_x);
     _inputTree->SetBranchAddress("RecoJet_closestVertex_y", &recoJet_closestVertex_y);
     _inputTree->SetBranchAddress("RecoJet_closestVertex_z", &recoJet_closestVertex_z);
@@ -243,6 +246,7 @@ bool LLGAnalysis::Init() {
     _cutFlow.insert(pair<string,int>("HasPV75", 0) );
     _cutFlow.insert(pair<string,int>("HasSV20", 0) );
     _cutFlow.insert(pair<string,int>("MET", 0) );
+    _cutFlow.insert(pair<string,int>("BVeto", 0) );
     _cutFlow.insert(pair<string,int>("SVPVDistance", 0) );
     
     // crate eps, png and pdf in the end
@@ -371,6 +375,7 @@ void LLGAnalysis::RunEventLoop( int nEntriesMax ) {
         // now count the number of vertices with jets:
         vector<int> PVWithJets75;
         vector<int> SVWithJets;
+        vector<int> SVWith2Jets;
         for( unsigned int iPV = 0; iPV < vertex_x -> size(); ++iPV ) {
             bool hasJet75 = false;
             for( unsigned int iiJet = 0; iiJet < idJetsToPV.at(iPV).size(); ++iiJet ) {
@@ -381,13 +386,14 @@ void LLGAnalysis::RunEventLoop( int nEntriesMax ) {
         }
         for( unsigned int iSV = 0; iSV < secVertex_x->size(); ++iSV ) {
             if( idJetsToSV.at(iSV).size() > 0 ) SVWithJets.push_back( iSV );
+            if( idJetsToSV.at(iSV).size() > 1 ) SVWith2Jets.push_back( iSV );
         }
         
 
         // and run the selection:
         if( PVWithJets75.size() == 1 ) {
             _cutFlow.at("HasPV75") += 1;
-            if( SVWithJets.size() > 0 ) {
+            if( SVWith2Jets.size() > 0 ) {
                 _cutFlow.at("HasSV20") += 1;
                 
                 _histograms1D.at("selected_met").Fill(met);
@@ -417,12 +423,31 @@ void LLGAnalysis::RunEventLoop( int nEntriesMax ) {
                 }
                 if( met > MET_CUT ) {
                     _cutFlow.at("MET") += 1;
-                    bool hasLargeDistance = false;
-                    for( unsigned int kDist = 0; kDist < allDistances.size(); ++kDist ) {
-                        if( allDistances.at(kDist) > 5. ) hasLargeDistance = true;
+                   
+                    bool hasBjetFromSV = false;
+                    for( unsigned int iSV = 0; iSV < secVertex_x->size(); ++iSV ) {
+                      if( idJetsToSV.at(iSV).size() <= 1 ) continue;
+                      int nBjets = 0;
+                      for( unsigned int iJToSV = 0; iJToSV < idJetsToSV.at(iSV).size(); ++iJToSV ) {
+                        int jIdx = idJetsToSV.at(iSV).at(iJToSV);
+                        if( recoJet_btag_combinedInclusiveSecondaryVertexV2BJetTags->at(jIdx) > 0.423 ) {
+                          nBjets += 1;
+                          hasBjetFromSV = true;
+                        }
+                      }
+                      _histograms1D.at("nBjetAtSV").Fill(nBjets);
                     }
-                    if( hasLargeDistance ) {
+                    if( !hasBjetFromSV ) {
+                      _cutFlow.at("BVeto") += 1;
+                      /*
+                      bool hasLargeDistance = false;
+                      for( unsigned int kDist = 0; kDist < allDistances.size(); ++kDist ) {
+                        if( allDistances.at(kDist) > 5. ) hasLargeDistance = true;
+                      }
+                      if( hasLargeDistance ) {
                         _cutFlow.at("SVPVDistance") += 1;
+                      }*/
+
                     }
                 }
             }
@@ -458,6 +483,15 @@ void LLGAnalysis::FinishRun() {
     for( map<string,int>::iterator itr = _cutFlow.begin(); itr != _cutFlow.end(); ++itr ) {
         cout << (*itr).first << " " << (*itr).second << endl;
     }
+
+    TFile *fHistOutput = new TFile( "outputHistograms.root", "RECREATE" );
+    for( map<string,TH1D>::iterator itr_h = _histograms1D.begin(); itr_h != _histograms1D.end(); ++itr_h ) {
+      (*itr_h).second.Write();
+    }
+    for( map<string,TH2D>::iterator itr_h = _histograms2D.begin(); itr_h != _histograms2D.end(); ++itr_h ) {
+      (*itr_h).second.Write();
+    }
+    fHistOutput->Close();
 
     delete _inputTree;
     delete recoJet_pt;
