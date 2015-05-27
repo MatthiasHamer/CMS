@@ -13,12 +13,17 @@ LLGAnalysis::LLGAnalysis( char *configFileName ) {
     
     
     // Setup the default values for the cuts:
-    JET_PT_CUT = 20;
+    JET_PT_CUT_SV = 30;
+    JET_PT_CUT_SV = 75;
     JET_ETA_CUT = 5.0;
-    MUON_PT_CUT = 10.;
-    ELECTRON_PT_CUT = 10.;
-    MET_CUT = 150.;
-    
+    MUON_PT_CUT = 15.;
+    ELECTRON_PT_CUT = 15.;
+    MET_CUT = 210.;
+    PROC_XSEC = 1.;
+    PROC_NTOT = 1.;
+    applyEventWeights = false;
+    TARGET_LUMI = 1000.;
+
     ifstream configFile( configFileName, ios::in );
     while( configFile.good() ) {
         string key, value;
@@ -26,12 +31,20 @@ LLGAnalysis::LLGAnalysis( char *configFileName ) {
         if( configFile.eof() ) break;
         if( key == "InputFile"        ) _inputFileNames.push_back( value ); 
         if( key == "InputTree"        ) _inputTreeName = value; 
-        if( key == "JET_PT_CUT"       ) JET_PT_CUT = atof(value.c_str());
+        if( key == "JET_PT_CUT_SV"    ) JET_PT_CUT_SV = atof(value.c_str());
+        if( key == "JET_PT_CUT_PV"    ) JET_PT_CUT_PV = atof(value.c_str());
         if( key == "JET_ETA_CUT"      ) JET_ETA_CUT = atof(value.c_str());
         if( key == "MUON_PT_CUT"      ) MUON_PT_CUT = atof(value.c_str()); 
         if( key == "ELECTRON_PT_CUT"  ) ELECTRON_PT_CUT = atof(value.c_str()); 
         if( key == "MET_CUT"          ) MET_CUT = atof(value.c_str()); 
+        if( key == "PROC_XSEC"        ) PROC_XSEC = atof(value.c_str());
+        if( key == "PROC_NTOT"        ) PROC_NTOT = atof(value.c_str());
+        if( key == "TARGET_LUMI"      ) TARGET_LUMI = atof(value.c_str());
+        if( key == "ApplyEventWeights" ) applyEventWeights = ( atoi(value.c_str()) == 1 );
     }
+
+    evtWeight = applyEventWeights ? PROC_XSEC/PROC_NTOT * TARGET_LUMI : 1.;
+
 }
 
 void LLGAnalysis::MakeEfficiencyPlot( TH1D hpass, TH1D htotal, TCanvas *c, string triggerName ) {
@@ -136,7 +149,7 @@ bool LLGAnalysis::Init() {
     // create the histograms and add them to the list
     makeHist( "selected_distances", 40, 0., 40., "Distance between PV and SV [mm]", "Number of PV-SV pairs" );
     makeHist( "selected_met", 50, 0., 500., "MET [GeV]", "Number of Events" );
-    makeHist( "selected_nPV75", 4, -0.5, 3.5, "# PV with at least 1 Jet > 75 GeV", "Number of Events" );
+    makeHist( "selected_nPVJet", 4, -0.5, 3.5, "# PV with at least 1 Jet > 75 GeV", "Number of Events" );
     makeHist( "selected_nJetsToSV", 7, -0.5, 6.5, "# Jets associated to SV", "Number of Vertices" ); 
     makeHist( "selected_nSV", 5, -0.5, 4.5, "# SV with at least 1 Jet", "Number of Events" ); 
     makeHist( "MET_allEvents", 50, 0., 2000., "MET [GeV]", "Number of Events" );
@@ -149,12 +162,6 @@ bool LLGAnalysis::Init() {
     recoJet_pt = new vector<double>;
     recoJet_phi = new vector<double>;
     recoJet_eta = new vector<double>;
-    recoJet_secVertex3D = new vector<double>;
-    recoJet_secVertexSig = new vector<double>;
-    recoJet_bJetTag = new vector<double>;
-    recoJet_closestVertex_x = new vector<double>;
-    recoJet_closestVertex_y = new vector<double>;
-    recoJet_closestVertex_z = new vector<double>;
     recoJet_btag_combinedInclusiveSecondaryVertexV2BJetTags = new vector<double>;
     
     muon_px = new vector<double>;
@@ -175,9 +182,6 @@ bool LLGAnalysis::Init() {
     recoJet_constVertex_x = new vector<vector<double> >;
     recoJet_constVertex_y = new vector<vector<double> >;
     recoJet_constVertex_z = new vector<vector<double> >;
-    recoJet_constclosestVertex_x = new vector<vector<double> >;
-    recoJet_constclosestVertex_y = new vector<vector<double> >;
-    recoJet_constclosestVertex_z = new vector<vector<double> >;
     recoJet_const_pt = new vector<vector<double> >;
     recoJet_const_closestVertex_dxy = new vector<vector<double> >;
     recoJet_const_closestVertex_dz = new vector<vector<double> >;
@@ -209,19 +213,14 @@ bool LLGAnalysis::Init() {
     _inputTree->SetBranchAddress("RecoJet_pt", &recoJet_pt );
     _inputTree->SetBranchAddress("RecoJet_eta", &recoJet_eta );
     _inputTree->SetBranchAddress("RecoJet_phi", &recoJet_phi );
-    _inputTree->SetBranchAddress("RecoJet_secVertex3D", &recoJet_secVertex3D );
-    _inputTree->SetBranchAddress("RecoJet_secVertexSig", &recoJet_secVertexSig );
-    _inputTree->SetBranchAddress("RecoJet_bJetTag", &recoJet_bJetTag );
     _inputTree->SetBranchAddress("RecoJet_btag_combinedInclusiveSecondaryVertexV2BJetTags", &recoJet_btag_combinedInclusiveSecondaryVertexV2BJetTags );
-    _inputTree->SetBranchAddress("RecoJet_closestVertex_x", &recoJet_closestVertex_x);
-    _inputTree->SetBranchAddress("RecoJet_closestVertex_y", &recoJet_closestVertex_y);
-    _inputTree->SetBranchAddress("RecoJet_closestVertex_z", &recoJet_closestVertex_z);
+    _inputTree->SetBranchAddress("RecoJet_btag_jetBProbabilityBJetTags", &recoJet_btag_jetBProbabilityBJetTags );
+    _inputTree->SetBranchAddress("RecoJet_btag_jetProbabilityBJetTags", &recoJet_btag_jetProbabilityBJetTags );
+    _inputTree->SetBranchAddress("RecoJet_btag_trackCountingHighPurBJetTags", &recoJet_btag_trackCountingHighPurBJetTags );
+    _inputTree->SetBranchAddress("RecoJet_btag_trackCountingHighEffBJetTags", &recoJet_btag_trackCountingHighEffBJetTags );
     _inputTree->SetBranchAddress("RecoJet_constVertex_x", &recoJet_constVertex_x );
     _inputTree->SetBranchAddress("RecoJet_constVertex_y", &recoJet_constVertex_y );
     _inputTree->SetBranchAddress("RecoJet_constVertex_z", &recoJet_constVertex_z );
-    _inputTree->SetBranchAddress("RecoJet_constclosestVertex_x", &recoJet_constclosestVertex_x );
-    _inputTree->SetBranchAddress("RecoJet_constclosestVertex_y", &recoJet_constclosestVertex_y );
-    _inputTree->SetBranchAddress("RecoJet_constclosestVertex_z", &recoJet_constclosestVertex_z );
     _inputTree->SetBranchAddress("RecoJet_const_pt", &recoJet_const_pt );
     _inputTree->SetBranchAddress("RecoJet_const_charge", &recoJet_const_charge );
     _inputTree->SetBranchAddress("RecoJet_const_closestVertex_dxy", &recoJet_const_closestVertex_dxy );
@@ -239,16 +238,18 @@ bool LLGAnalysis::Init() {
 
 
     // setup the cutflow
-    _cutFlow.insert(pair<string,int>("NoCut", 0) );
-    _cutFlow.insert(pair<string,int>("Trigger", 0) );
-    _cutFlow.insert(pair<string,int>("MuonVeto", 0) );
-    _cutFlow.insert(pair<string,int>("ElectronVeto", 0) );
-    _cutFlow.insert(pair<string,int>("HasPV75", 0) );
-    _cutFlow.insert(pair<string,int>("HasSV20", 0) );
-    _cutFlow.insert(pair<string,int>("MET", 0) );
-    _cutFlow.insert(pair<string,int>("BVeto", 0) );
-    _cutFlow.insert(pair<string,int>("SVPVDistance", 0) );
+    _cutFlow.insert(pair<string,int>("0_NoCut", 0) );
+    _cutFlow.insert(pair<string,int>("1_Trigger", 0) );
+    _cutFlow.insert(pair<string,int>("2_MuonVeto", 0) );
+    _cutFlow.insert(pair<string,int>("3_ElectronVeto", 0) );
+    _cutFlow.insert(pair<string,int>("4_HasPVJet", 0) );
+    _cutFlow.insert(pair<string,int>("5_HasSV20", 0) );
+    _cutFlow.insert(pair<string,int>("6_MET", 0) );
+    _cutFlow.insert(pair<string,int>("7_BVeto", 0) );
+    _cutFlow.insert(pair<string,int>("8_SVPVDistance", 0) );
     
+
+
     // crate eps, png and pdf in the end
     _plotFormats.push_back(".eps");
     _plotFormats.push_back(".png");
@@ -271,9 +272,10 @@ void LLGAnalysis::RunEventLoop( int nEntriesMax ) {
         cout << "====================" << endl;
 
         _inputTree->GetEntry(i);
-        _cutFlow.at("NoCut") += 1;
+        _cutFlow.at("0_NoCut") += 1;
         
 
+        // don' fill these histograms with weights as they are used for the efficiency plots!
         _histograms1D.at("MET_allEvents").Fill( met );
         int leadingJet = -1;
         double leadingJetPt = 0.;
@@ -283,6 +285,7 @@ void LLGAnalysis::RunEventLoop( int nEntriesMax ) {
                 leadingJet = iJet;
             }
         }
+        // don' fill these histograms with weights as they are used for the efficiency plots!
         if( leadingJet >= 0 ) _histograms1D.at("jet1_pt_allEvents").Fill( recoJet_pt->at(leadingJet) );
 
 
@@ -290,6 +293,8 @@ void LLGAnalysis::RunEventLoop( int nEntriesMax ) {
         for( unsigned int iTrig = 0; iTrig < triggerNames->size(); ++iTrig ) {
             if( (triggerNames->at(iTrig) == "HLT_PFJet260_v1" || triggerNames->at(iTrig) == "HLT_PFMET170_NoiseCleaned_v1") && triggerBits->at(iTrig) == 1 ) passTrigger = true;
             
+
+            // don' fill these histograms with weights as they are used for the efficiency plots!
             if( triggerNames->at(iTrig) == "HLT_PFMET170_NoiseCleaned_v1" && triggerBits->at(iTrig) == 1 ) {
                 _histograms1D.at("MET_HLT_PFMET170_NoiseCleaned_v1").Fill( met );
             }
@@ -299,7 +304,7 @@ void LLGAnalysis::RunEventLoop( int nEntriesMax ) {
         }
         
         if( !passTrigger ) continue;
-        _cutFlow.at("Trigger") += 1;
+        _cutFlow.at("1_Trigger") += 1;
 
         // lepton veto:
         bool hasMuon = false;
@@ -308,7 +313,7 @@ void LLGAnalysis::RunEventLoop( int nEntriesMax ) {
             if( pt > MUON_PT_CUT ) hasMuon = true;
         }
         if( hasMuon ) continue;
-        _cutFlow.at("MuonVeto") += 1;
+        _cutFlow.at("2_MuonVeto") += 1;
         
         
         bool hasElectron = false;
@@ -317,7 +322,7 @@ void LLGAnalysis::RunEventLoop( int nEntriesMax ) {
             if( pt > ELECTRON_PT_CUT ) hasElectron = true;
         }
         if( hasElectron ) continue;
-        _cutFlow.at("ElectronVeto") += 1;
+        _cutFlow.at("3_ElectronVeto") += 1;
 
 
 
@@ -337,7 +342,7 @@ void LLGAnalysis::RunEventLoop( int nEntriesMax ) {
         }
         
         for( unsigned int iJet = 0; iJet < recoJet_pt->size(); ++iJet ) {
-            if( recoJet_pt->at(iJet) < JET_PT_CUT ) continue;
+            if( recoJet_pt->at(iJet) < JET_PT_CUT_SV ) continue;
             if( fabs(recoJet_eta->at(iJet)) > JET_ETA_CUT ) continue;
             
             //calculate jet vertex position:
@@ -373,16 +378,16 @@ void LLGAnalysis::RunEventLoop( int nEntriesMax ) {
         }
 
         // now count the number of vertices with jets:
-        vector<int> PVWithJets75;
+        vector<int> PVWithJet;
         vector<int> SVWithJets;
         vector<int> SVWith2Jets;
         for( unsigned int iPV = 0; iPV < vertex_x -> size(); ++iPV ) {
-            bool hasJet75 = false;
+            bool hasJetPV = false;
             for( unsigned int iiJet = 0; iiJet < idJetsToPV.at(iPV).size(); ++iiJet ) {
                 int iJet = idJetsToPV.at(iPV).at(iiJet);
-                if( recoJet_pt->at(iJet) > 75. ) hasJet75 = true;
+                if( recoJet_pt->at(iJet) > JET_PT_CUT_PV ) hasJetPV = true;
             }
-            if( hasJet75 ) PVWithJets75.push_back( iPV );
+            if( hasJetPV ) PVWithJet.push_back( iPV );
         }
         for( unsigned int iSV = 0; iSV < secVertex_x->size(); ++iSV ) {
             if( idJetsToSV.at(iSV).size() > 0 ) SVWithJets.push_back( iSV );
@@ -391,24 +396,24 @@ void LLGAnalysis::RunEventLoop( int nEntriesMax ) {
         
 
         // and run the selection:
-        if( PVWithJets75.size() == 1 ) {
-            _cutFlow.at("HasPV75") += 1;
+        if( PVWithJet.size() == 1 ) {
+            _cutFlow.at("4_HasPVJet") += 1;
             if( SVWith2Jets.size() > 0 ) {
-                _cutFlow.at("HasSV20") += 1;
+                _cutFlow.at("5_HasSV20") += 1;
                 
-                _histograms1D.at("selected_met").Fill(met);
-                _histograms1D.at("selected_nPV75").Fill( PVWithJets75.size() ); 
-                _histograms1D.at("selected_nSV").Fill( SVWithJets.size() );
+                _histograms1D.at("selected_met").Fill( met, evtWeight );
+                _histograms1D.at("selected_nPVJet").Fill( PVWithJet.size(), evtWeight  ); 
+                _histograms1D.at("selected_nSV").Fill( SVWithJets.size(), evtWeight  );
                 
                 for( unsigned int iSV = 0; iSV < SVWithJets.size(); ++iSV ) {
-                    _histograms1D.at("selected_nJetsToSV").Fill( idJetsToSV.at(SVWithJets.at(iSV)).size() );
+                    _histograms1D.at("selected_nJetsToSV").Fill( idJetsToSV.at(SVWithJets.at(iSV)).size(), evtWeight  );
                 }
                 vector<double> allDistances;
 
-                for( unsigned int iPV = 0; iPV < PVWithJets75.size(); ++iPV ) {
-                    double thispv_x = vertex_x->at(PVWithJets75.at(iPV));
-                    double thispv_y = vertex_y->at(PVWithJets75.at(iPV));
-                    double thispv_z = vertex_z->at(PVWithJets75.at(iPV));
+                for( unsigned int iPV = 0; iPV < PVWithJet.size(); ++iPV ) {
+                    double thispv_x = vertex_x->at(PVWithJet.at(iPV));
+                    double thispv_y = vertex_y->at(PVWithJet.at(iPV));
+                    double thispv_z = vertex_z->at(PVWithJet.at(iPV));
                     for( unsigned int iSV = 0; iSV < SVWithJets.size(); ++iSV ) {
                         double thissv_x = secVertex_x->at(SVWithJets.at(iSV));
                         double thissv_y = secVertex_y->at(SVWithJets.at(iSV));
@@ -417,12 +422,12 @@ void LLGAnalysis::RunEventLoop( int nEntriesMax ) {
                         double dy = thissv_y - thispv_y;
                         double dz = thissv_z - thispv_z;
                         double dist = 10.*sqrt( dx*dx + dy*dy + dz*dz );
-                        _histograms1D.at("selected_distances").Fill(dist);
+                        _histograms1D.at("selected_distances").Fill( dist, evtWeight);
                         allDistances.push_back( dist );
                     }
                 }
                 if( met > MET_CUT ) {
-                    _cutFlow.at("MET") += 1;
+                    _cutFlow.at("6_MET") += 1;
                    
                     bool hasBjetFromSV = false;
                     for( unsigned int iSV = 0; iSV < secVertex_x->size(); ++iSV ) {
@@ -435,17 +440,17 @@ void LLGAnalysis::RunEventLoop( int nEntriesMax ) {
                           hasBjetFromSV = true;
                         }
                       }
-                      _histograms1D.at("nBjetAtSV").Fill(nBjets);
+                      _histograms1D.at("nBjetAtSV").Fill(nBjets, evtWeight );
                     }
                     if( !hasBjetFromSV ) {
-                      _cutFlow.at("BVeto") += 1;
+                      _cutFlow.at("7_BVeto") += 1;
                       /*
                       bool hasLargeDistance = false;
                       for( unsigned int kDist = 0; kDist < allDistances.size(); ++kDist ) {
                         if( allDistances.at(kDist) > 5. ) hasLargeDistance = true;
                       }
                       if( hasLargeDistance ) {
-                        _cutFlow.at("SVPVDistance") += 1;
+                        _cutFlow.at("8_SVPVDistance") += 1;
                       }*/
 
                     }
@@ -481,7 +486,7 @@ void LLGAnalysis::FinishRun() {
     cout << endl << "RECO CUT FLOW " << endl;
     cout << "-----------------------------" << endl;
     for( map<string,int>::iterator itr = _cutFlow.begin(); itr != _cutFlow.end(); ++itr ) {
-        cout << (*itr).first << " " << (*itr).second << endl;
+        cout << (*itr).first << " " << (*itr).second * evtWeight << endl;
     }
 
     TFile *fHistOutput = new TFile( "outputHistograms.root", "RECREATE" );
@@ -497,12 +502,11 @@ void LLGAnalysis::FinishRun() {
     delete recoJet_pt;
     delete recoJet_phi;
     delete recoJet_eta;
-    delete recoJet_secVertex3D;
-    delete recoJet_secVertexSig;
-    delete recoJet_bJetTag;
-    delete recoJet_closestVertex_x;
-    delete recoJet_closestVertex_y;
-    delete recoJet_closestVertex_z;
+    delete recoJet_btag_combinedInclusiveSecondaryVertexV2BJetTags;
+    delete recoJet_btag_jetBProbabilityBJetTags;
+    delete recoJet_btag_jetProbabilityBJetTags;
+    delete recoJet_btag_trackCountingHighPurBJetTags;
+    delete recoJet_btag_trackCountingHighEffBJetTags;
     delete muon_px;
     delete muon_py;
     delete muon_pz;
@@ -518,9 +522,6 @@ void LLGAnalysis::FinishRun() {
     delete recoJet_constVertex_x;
     delete recoJet_constVertex_y;
     delete recoJet_constVertex_z;
-    delete recoJet_constclosestVertex_x;
-    delete recoJet_constclosestVertex_y;
-    delete recoJet_constclosestVertex_z;
     delete recoJet_const_pt;
     delete recoJet_const_closestVertex_dxy;
     delete recoJet_const_closestVertex_dz;

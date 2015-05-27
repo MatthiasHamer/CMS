@@ -57,13 +57,11 @@ class LLGAnalysis {
         vector<double> *recoJet_pt; 
         vector<double> *recoJet_phi; 
         vector<double> *recoJet_eta; 
-        vector<double> *recoJet_secVertex3D; 
-        vector<double> *recoJet_secVertexSig; 
-        vector<double> *recoJet_bJetTag; 
-        vector<double> *recoJet_closestVertex_x; 
-        vector<double> *recoJet_closestVertex_y; 
-        vector<double> *recoJet_closestVertex_z; 
         vector<double> *recoJet_btag_combinedInclusiveSecondaryVertexV2BJetTags;
+        vector<double> *recoJet_btag_jetBProbabilityBJetTags;
+        vector<double> *recoJet_btag_jetProbabilityBJetTags;
+        vector<double> *recoJet_btag_trackCountingHighPurBJetTags;
+        vector<double> *recoJet_btag_trackCountingHighEffBJetTags;
         vector<double> *muon_px; 
         vector<double> *muon_py; 
         vector<double> *muon_pz; 
@@ -79,9 +77,6 @@ class LLGAnalysis {
         vector<vector<double> > *recoJet_constVertex_x; 
         vector<vector<double> > *recoJet_constVertex_y; 
         vector<vector<double> > *recoJet_constVertex_z; 
-        vector<vector<double> > *recoJet_constclosestVertex_x; 
-        vector<vector<double> > *recoJet_constclosestVertex_y; 
-        vector<vector<double> > *recoJet_constclosestVertex_z; 
         vector<vector<double> > *recoJet_const_pt; 
         vector<vector<double> > *recoJet_const_closestVertex_dxy; 
         vector<vector<double> > *recoJet_const_closestVertex_dz; 
@@ -99,12 +94,25 @@ class LLGAnalysis {
     
         double met;
 
-        double JET_PT_CUT;
+
+        double evtWeight;
+        double JET_PT_CUT_SV;
+        double JET_PT_CUT_PV;
         double JET_ETA_CUT;
         double MUON_PT_CUT;
         double ELECTRON_PT_CUT;
         double MET_CUT;
 
+        // the total number of events per sample (take it from DAS!)
+        double PROC_NTOT;
+        // the total cross section for the process in pb
+        double PROC_XSEC;
+        // the target luminosity in fb-1
+        double TARGET_LUMI;
+
+        bool applyEventWeights;
+        
+    
         vector<string> _plotFormats;
 
 };
