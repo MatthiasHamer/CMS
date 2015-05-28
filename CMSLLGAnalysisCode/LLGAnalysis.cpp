@@ -250,7 +250,8 @@ void LLGAnalysis::RunEventLoop( int nEntriesMax ) {
 
     
     if( SELECTION == "SignalRegion" ) SetupSignalRegion();
-    // INSERT YOUR SELECTION HERE
+    else if( SELECTION == "WJetsCR" ) SetupWJetsCR();
+    // SETUP YOUR SELECTION HERE
 
     else {
       std::cout << "Unknown selection requested. Exiting. " << std::endl;
@@ -267,7 +268,8 @@ void LLGAnalysis::RunEventLoop( int nEntriesMax ) {
         FillEfficiencyHistograms();
 
         if( SELECTION == "SignalRegion" ) SignalRegionSelection();
-        // INSERT YOUR SELECTION HERE
+        else if( SELECTION == "WJetsCR" ) WJetsCRSelection();
+        // CALL YOUR SELECTION HERE
 
     }
     return;
@@ -294,7 +296,6 @@ void LLGAnalysis::FillEfficiencyHistograms() {
             
         // don' fill these histograms with weights as they are used for the efficiency plots!
         if( triggerNames->at(iTrig) == "HLT_PFMET170_NoiseCleaned_v1" && triggerBits->at(iTrig) == 1 ) {
-            std::cout << "with met = " << met << " passed trigger " << std::endl;
             _histograms1D.at("MET_HLT_PFMET170_NoiseCleaned_v1").Fill( met );
         }
         if( triggerNames->at(iTrig) == "HLT_PFJet260_v1" && triggerBits->at(iTrig) == 1 ) {
