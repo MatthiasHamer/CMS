@@ -1,5 +1,6 @@
 #!/bin/bash
 
+if [ ! -e cutflow${1}.cpp ]; then 
 echo "#include \"LLGAnalysis.h\"" >> cutflow${1}.cpp
 echo "void LLGAnalysis::Setup${1}() {" >> cutflow${1}.cpp
 echo  >> cutflow${1}.cpp
@@ -14,7 +15,7 @@ echo "void LLGAnalysis::${1}Selection() {">> cutflow${1}.cpp
 echo  >> cutflow${1}.cpp
 echo "    return;">> cutflow${1}.cpp
 echo "}">> cutflow${1}.cpp
-
+fi
 
 sed -ie '/INSERT YOUR SELECTION HERE/ i\        void Setup'${1}'();' LLGAnalysis.h
 sed -ie '/INSERT YOUR SELECTION HERE/ i\        void '${1}'Selection();' LLGAnalysis.h
