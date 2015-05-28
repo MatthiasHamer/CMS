@@ -40,6 +40,12 @@ class LLGAnalysis {
         void makeHist( string nametitle, int nbins, double xmin, double xmax, string xtitle, string ytitle, string drawOption = "", double xAxisOffset = 1., double yAxisOffset = 1.2 );
         void setStyle(double ytoff = 1.0, bool marker = true, double left_margin = 0.15); 
         void MakeEfficiencyPlot( TH1D hpass, TH1D htotal, TCanvas *c, string triggerName = "");
+        void FillEfficiencyHistograms();
+        
+        void SetupSignalRegion();
+        void SignalRegionSelection();
+        // INSERT YOUR SELECTION HERE
+
 
     private:
         LLGAnalysis() {}
@@ -102,6 +108,7 @@ class LLGAnalysis {
         double MUON_PT_CUT;
         double ELECTRON_PT_CUT;
         double MET_CUT;
+        std::string SELECTION;
 
         // the total number of events per sample (take it from DAS!)
         double PROC_NTOT;
