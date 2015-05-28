@@ -6,8 +6,8 @@ CXXFLAGS = -O3 -Wall --exceptions `root-config --ldflags --cflags` -I./
 %.o : %.cpp
 	$(CXX) $(CXXFLAGS) -c $< -o $@
 
-RunAnalysis: LLGAnalysis.o RunAnalysis.o cutflowSignalRegion.o
-	$(CXX) -o RunAnalysis RunAnalysis.o LLGAnalysis.o cutflowSignalRegion.o $(LDFLAGS) $(LIBS)
+RunAnalysis: LLGAnalysis.o RunAnalysis.o cutflowSignalRegion.o cutflowWJetsCR.o 
+	$(CXX) -o RunAnalysis RunAnalysis.o LLGAnalysis.o cutflowSignalRegion.o cutflowWJetsCR.o $(LDFLAGS) $(LIBS)
 clean:
 	rm -f RunAnalysis
 	rm -f *.o
