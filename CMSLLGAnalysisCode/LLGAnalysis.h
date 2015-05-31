@@ -44,6 +44,8 @@ class LLGAnalysis {
         
         void SetupSignalRegion();
         void SignalRegionSelection();
+        void SetupWJetsCR();
+        void WJetsCRSelection();
         // INSERT YOUR SELECTION HERE
 
 
