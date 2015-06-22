@@ -280,8 +280,8 @@ void LLGAnalysis::RunEventLoop( int nEntriesMax ) {
 
     for( int i = 0; i < nEntriesMax; ++i ) {
         
-        cout << "NOW RUNNING EVENT " << i << endl;
-        cout << "====================" << endl;
+        cout << "NOW RUNNING EVENT " << i << "\r"; fflush(stdout);
+        //cout << "====================" << endl;
 
         _inputTree->GetEntry(i);
         
@@ -292,6 +292,7 @@ void LLGAnalysis::RunEventLoop( int nEntriesMax ) {
         // CALL YOUR SELECTION HERE
 
     }
+    cout << endl;
     return;
 
 }   
