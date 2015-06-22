@@ -24,6 +24,8 @@ LLGAnalysis::LLGAnalysis( char *configFileName ) {
     applyEventWeights = false;
     TARGET_LUMI = 1000.;
     SELECTION = "SignalRegion";
+    metadataFileName = "Configuration/DatasetMetadata.txt";
+    datasetName = "Signal_500_60";
 
     ifstream configFile( configFileName, ios::in );
     while( configFile.good() ) {
@@ -38,13 +40,31 @@ LLGAnalysis::LLGAnalysis( char *configFileName ) {
         if( key == "MUON_PT_CUT"       ) MUON_PT_CUT = atof(value.c_str()); 
         if( key == "ELECTRON_PT_CUT"   ) ELECTRON_PT_CUT = atof(value.c_str()); 
         if( key == "MET_CUT"           ) MET_CUT = atof(value.c_str()); 
-        if( key == "PROC_XSEC"         ) PROC_XSEC = atof(value.c_str());
-        if( key == "PROC_NTOT"         ) PROC_NTOT = atof(value.c_str());
+        //if( key == "PROC_XSEC"         ) PROC_XSEC = atof(value.c_str());
+        //if( key == "PROC_NTOT"         ) PROC_NTOT = atof(value.c_str());
         if( key == "TARGET_LUMI"       ) TARGET_LUMI = atof(value.c_str());
         if( key == "ApplyEventWeights" ) applyEventWeights = ( atoi(value.c_str()) == 1 );
         if( key == "Selection"         ) SELECTION = value;
+        if( key == "MetadataFileName"  ) metadataFileName = value;
+        if( key == "DatasetName"       ) datasetName = value;
     }
-
+    
+    bool foundMetadata = false;
+    ifstream metadataFile( metadataFileName, ios::in );
+    while( metadataFile.good() ) {
+      string name, xs, ntot;
+      metadataFile >> name >> ws >> xs >> ws >> ntot;
+      if( metadataFile.eof() ) break;
+      if( name == datasetName ) {
+        PROC_XSEC = atof( xs.c_str() );
+        PROC_NTOT = atof( ntot.c_str() );
+        foundMetadata = true;
+        break;
+      }
+    }
+    if( !foundMetadata ) {
+      cout << "Did not find dataset " << datasetName << " in " << metadataFileName << ". Using standard values for xsec and ntot: " << PROC_XSEC << " " << PROC_NTOT << endl;
+    }
     evtWeight = applyEventWeights ? PROC_XSEC/PROC_NTOT * TARGET_LUMI : 1.;
 
 }

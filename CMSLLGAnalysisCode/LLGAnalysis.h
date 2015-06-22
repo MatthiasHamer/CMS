@@ -111,6 +111,8 @@ class LLGAnalysis {
         double ELECTRON_PT_CUT;
         double MET_CUT;
         std::string SELECTION;
+        std::string metadataFileName;
+        std::string datasetName;
 
         // the total number of events per sample (take it from DAS!)
         double PROC_NTOT;
