@@ -14,7 +14,7 @@ LLGAnalysis::LLGAnalysis( char *configFileName ) {
     
     // Setup the default values for the cuts:
     JET_PT_CUT_SV = 30;
-    JET_PT_CUT_SV = 75;
+    JET_PT_CUT_PV = 75;
     JET_ETA_CUT = 5.0;
     MUON_PT_CUT = 15.;
     ELECTRON_PT_CUT = 15.;
