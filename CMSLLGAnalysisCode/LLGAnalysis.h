@@ -75,11 +75,15 @@ class LLGAnalysis {
         vector<double> *muon_pz; 
         vector<double> *muon_phi; 
         vector<double> *muon_eta; 
+        vector<double> *muon_iso;
+        vector<bool>   *muon_isLooseMuon;
+        vector<bool>   *muon_isTightMuon;
         vector<double> *electron_px; 
         vector<double> *electron_py; 
         vector<double> *electron_pz; 
         vector<double> *electron_phi; 
         vector<double> *electron_eta; 
+        vector<double> *electron_iso;
         vector<int> *triggerBits; 
         vector<string> *triggerNames; 
         vector<vector<double> > *recoJet_constVertex_x; 
@@ -101,6 +105,8 @@ class LLGAnalysis {
         vector<double> *vertex_pt; 
     
         double met;
+        double met_x;
+        double met_y;
 
 
         double evtWeight;

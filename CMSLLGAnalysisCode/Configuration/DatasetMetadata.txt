@@ -4,8 +4,8 @@ TTWJets_Tune4C_13TeV-madgraph-tauola                        1.152     246521
 TTZJets_Tune4C_13TeV-madgraph-tauola                        2.232     249275
 TToLeptons_s-channel-CSA14_Tune4C_13TeV-aMCatNLO-tauola     2.32      500000
 TToLeptons_t-channel-CSA14_Tune4C_13TeV-aMCatNLO-tauola    44.07      3991000
-T_tW-channel-DR_Tune4C_13TeV-CSA14-powheg-tauola           35.6       9861000
-Tbar_tW-channel-DR_Tune4C_13TeV-CSA14-powheg-tauola        35.6       9861000
+T_tW-channel-DR_Tune4C_13TeV-CSA14-powheg-tauola           35.6       986100
+Tbar_tW-channel-DR_Tune4C_13TeV-CSA14-powheg-tauola        35.6       971800
 TBarToLeptons_s-channel-CSA14_Tune4C_13TeV-aMCatNLO-tauola  1.36      250000
 TBarToLeptons_t-channel-CSA14_Tune4C_13TeV-aMCatNLO-tauola 26.23      1999800
 WJetsToLNu_13TeV-madgraph-pythia8-tauola                61526.7       10017462

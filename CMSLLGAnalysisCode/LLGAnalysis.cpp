@@ -185,13 +185,17 @@ bool LLGAnalysis::Init() {
     muon_pz = new vector<double>;
     muon_phi = new vector<double>;
     muon_eta = new vector<double>;
+    muon_iso = new vector<double>;
+    muon_isTightMuon = new vector<bool>;
+    muon_isLooseMuon = new vector<bool>;
     
     electron_px = new vector<double>;
     electron_py = new vector<double>;
     electron_pz = new vector<double>;
     electron_phi = new vector<double>;
     electron_eta = new vector<double>;
-    
+    electron_iso = new vector<double>;
+
     triggerBits = new vector<int>;
     triggerNames = new vector<string>;
     
@@ -219,11 +223,15 @@ bool LLGAnalysis::Init() {
     _inputTree->SetBranchAddress("RecoMuon_pz", &muon_pz );
     _inputTree->SetBranchAddress("RecoMuon_eta", &muon_eta );
     _inputTree->SetBranchAddress("RecoMuon_phi", &muon_phi );
+    _inputTree->SetBranchAddress("RecoMuon_iso", &muon_iso );
+    _inputTree->SetBranchAddress("RecoMuon_isLooseMuon", &muon_isLooseMuon );
+    _inputTree->SetBranchAddress("RecoMuon_isTightMuon", &muon_isTightMuon );
     _inputTree->SetBranchAddress("RecoElectron_px", &electron_px );
     _inputTree->SetBranchAddress("RecoElectron_py", &electron_py );
     _inputTree->SetBranchAddress("RecoElectron_pz", &electron_pz );
     _inputTree->SetBranchAddress("RecoElectron_eta", &electron_eta );
     _inputTree->SetBranchAddress("RecoElectron_phi", &electron_phi );
+    _inputTree->SetBranchAddress("RecoElectron_iso", &electron_iso );
     _inputTree->SetBranchAddress("TriggerNames", &triggerNames );
     _inputTree->SetBranchAddress("TriggerBits", &triggerBits );
     _inputTree->SetBranchAddress("RecoJet_pt", &recoJet_pt );
@@ -251,7 +259,8 @@ bool LLGAnalysis::Init() {
     _inputTree->SetBranchAddress("RecoVertex_nTracks", &vertex_nTracks );
     _inputTree->SetBranchAddress("RecoVertex_pt", &vertex_pt );
     _inputTree->SetBranchAddress("MET", &met );
-
+    _inputTree->SetBranchAddress("MET_x", &met_x );
+    _inputTree->SetBranchAddress("MET_y", &met_y );
 
     // crate eps, png and pdf in the end
     _plotFormats.push_back(".eps");
@@ -377,11 +386,15 @@ void LLGAnalysis::FinishRun() {
     delete muon_pz;
     delete muon_phi;
     delete muon_eta;
+    delete muon_iso;
+    delete muon_isTightMuon;
+    delete muon_isLooseMuon;
     delete electron_px;
     delete electron_py;
     delete electron_pz;
     delete electron_phi;
     delete electron_eta;
+    delete electron_iso;
     delete triggerBits;
     delete triggerNames;
     delete recoJet_constVertex_x;

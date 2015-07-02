@@ -1,4 +1,5 @@
 #include "LLGAnalysis.h"
+#include "TLorentzVector.h"
 
 void LLGAnalysis::SetupSignalRegion() {
 
@@ -10,8 +11,9 @@ void LLGAnalysis::SetupSignalRegion() {
     _cutFlow.insert(pair<string,int>("4_HasPVJet", 0) );
     _cutFlow.insert(pair<string,int>("5_HasSV20", 0) );
     _cutFlow.insert(pair<string,int>("6_MET", 0) );
-    _cutFlow.insert(pair<string,int>("7_BVeto", 0) );
-    _cutFlow.insert(pair<string,int>("8_SVPVDistance", 0) );
+    _cutFlow.insert(pair<string,int>("7_DiJetMass", 0 ) );
+    _cutFlow.insert(pair<string,int>("8_BVeto", 0) );
+    _cutFlow.insert(pair<string,int>("9_SVPVDistance", 0) );
     
     // and the histograms 
     makeHist( "selected_distances", 40, 0., 40., "Distance between PV and SV [mm]", "Number of PV-SV pairs" );
@@ -20,7 +22,21 @@ void LLGAnalysis::SetupSignalRegion() {
     makeHist( "selected_nJetsToSV", 7, -0.5, 6.5, "# Jets associated to SV", "Number of Vertices" ); 
     makeHist( "selected_nSV", 5, -0.5, 4.5, "# SV with at least 1 Jet", "Number of Events" ); 
     makeHist( "nBjetAtSV", 5, -0.5, 4.5, "Number of b-jets associated to SV", "Number of SV" );
-
+    makeHist( "mJJSV", 100, 0., 500., "DiJet mass at SV", "Number of Jet Pairs" );
+    makeHist( "nJetsSV", 7, -0.5, 6.5, "Number of Jets associated to SV", "Number of SV" );
+    makeHist( "SVJet1Pt", 50, 0., 500., "SV Leading Jet pT [GeV]", "Number of SV" );
+    makeHist( "SVJet2Pt", 50, 0., 500., "SV 2^{nd} Leading Jet pT [GeV]", "Number of SV" );
+    makeHist( "SVJet3Pt", 50, 0., 500., "SV 3^{rd} Leading Jet pT [GeV]", "Number of SV" );
+    makeHist( "SVJet4Pt", 50, 0., 500., "SV 4^{th} Leading Jet pT [GeV]", "Number of SV" );
+    makeHist( "PVJet1Pt", 50, 0., 1000., "PV Leading Jet pT [GeV]", "Number of Events" );
+    makeHist( "PVJet2Pt", 50, 0., 500., "PV 2^{nd} Leading Jet pT [GeV]", "Number of Events" );
+    makeHist( "PVJet3Pt", 50, 0., 500., "PV 3^{rd} Leading Jet pT [GeV]", "Number of Events" );
+    makeHist( "PVJet4Pt", 50, 0., 500., "PV 4^{th} Leading Jet pT [GeV]", "Number of Events" );
+    makeHist( "nJetsTotal", 26, -0.5, 25.5, "Number of Jets with p_{T} > 30 GeV", "Number of Events" );
+    makeHist( "BJet1Pt", 50, 0., 500., "Leading B-tagged Jet p_{T} [GeV]", "Number of Events" );
+    makeHist( "BJet2Pt", 50, 0., 500., "Subleading B-tagged Jet p_{T} [GeV]", "Number of Events" );
+    makeHist( "BJet3Pt", 50, 0., 500., "3^{rd} leading B-tagged Jet p_{T} [GeV]", "Number of Events" );
+    makeHist( "BJet4Pt", 50, 0., 500., "4^{th} leading B-tagged Jet p_{T} [GeV]", "Number of Events" );
     return;
 }
 
@@ -42,6 +58,7 @@ void LLGAnalysis::SignalRegionSelection() {
     bool hasMuon = false;
     for( unsigned int im = 0; im < muon_px->size(); ++im ) {
         double pt = sqrt(muon_px->at(im)*muon_px->at(im) + muon_py->at(im)*muon_py->at(im));
+        if( muon_iso->at(im) / pt  > 0.2 ) continue;
         if( pt > MUON_PT_CUT ) hasMuon = true;
     }
     if( hasMuon ) return; 
@@ -51,6 +68,7 @@ void LLGAnalysis::SignalRegionSelection() {
     bool hasElectron = false;
     for( unsigned int im = 0; im < electron_px->size(); ++im ) {
         double pt = sqrt(electron_px->at(im)*electron_px->at(im) + electron_py->at(im)*electron_py->at(im));
+        if( electron_iso->at(im) / pt >= 0.15 ) continue;
         if( pt > ELECTRON_PT_CUT ) hasElectron = true;
     }
     if( hasElectron ) return;
@@ -113,24 +131,72 @@ void LLGAnalysis::SignalRegionSelection() {
     vector<int> PVWithJet;
     vector<int> SVWithJets;
     vector<int> SVWith2Jets;
+
+    int idxLeadingJetPV = -1;
+    double ptLeadingJetPV = -1.;
+    int idxSubLeadingJetPV = -1;
+    double ptSubLeadingJetPV = -1;
+    int idxThirdLeadingJetPV = -1;
+    double ptThirdLeadingJetPV = -1;
+    int idxFourthLeadingJetPV = -1;
+    double ptFourthLeadingJetPV = -1;
+  
     for( unsigned int iPV = 0; iPV < vertex_x -> size(); ++iPV ) {
         bool hasJetPV = false;
         for( unsigned int iiJet = 0; iiJet < idJetsToPV.at(iPV).size(); ++iiJet ) {
             int iJet = idJetsToPV.at(iPV).at(iiJet);
             if( recoJet_pt->at(iJet) > JET_PT_CUT_PV ) hasJetPV = true;
+            
+            if( recoJet_pt->at(iJet) > ptLeadingJetPV ) {
+                idxFourthLeadingJetPV = idxThirdLeadingJetPV;
+                ptFourthLeadingJetPV = ptThirdLeadingJetPV;
+                idxThirdLeadingJetPV = idxSubLeadingJetPV;
+                ptThirdLeadingJetPV = ptSubLeadingJetPV;
+                idxSubLeadingJetPV = idxLeadingJetPV;
+                ptSubLeadingJetPV = ptLeadingJetPV;
+                idxLeadingJetPV = iJet;
+                ptLeadingJetPV = recoJet_pt->at(iJet);
+            }
+            else if( recoJet_pt->at(iJet) > ptSubLeadingJetPV ) {
+                idxFourthLeadingJetPV = idxThirdLeadingJetPV;
+                ptFourthLeadingJetPV = ptThirdLeadingJetPV;
+                idxThirdLeadingJetPV = idxSubLeadingJetPV;
+                ptThirdLeadingJetPV = ptSubLeadingJetPV;
+                idxSubLeadingJetPV = iJet;
+                ptSubLeadingJetPV = recoJet_pt->at(iJet);
+            }
+            else if( recoJet_pt->at(iJet) > ptThirdLeadingJetPV ) {
+                idxFourthLeadingJetPV = idxThirdLeadingJetPV;
+                ptFourthLeadingJetPV = ptThirdLeadingJetPV;
+                idxThirdLeadingJetPV = iJet;
+                ptThirdLeadingJetPV = recoJet_pt->at(iJet);
+            }
+            else if( recoJet_pt->at(iJet) > ptThirdLeadingJetPV ) {
+                idxFourthLeadingJetPV = iJet;
+                ptFourthLeadingJetPV = recoJet_pt->at(iJet);
+            }
         }
         if( hasJetPV ) PVWithJet.push_back( iPV );
     }
+    _histograms1D.at("PVJet1Pt").Fill( ptLeadingJetPV, evtWeight );
+    _histograms1D.at("PVJet2Pt").Fill( ptSubLeadingJetPV, evtWeight );
+    _histograms1D.at("PVJet3Pt").Fill( ptThirdLeadingJetPV, evtWeight );
+    _histograms1D.at("PVJet4Pt").Fill( ptFourthLeadingJetPV, evtWeight );
+
     for( unsigned int iSV = 0; iSV < secVertex_x->size(); ++iSV ) {
         if( idJetsToSV.at(iSV).size() > 0 ) SVWithJets.push_back( iSV );
-        if( idJetsToSV.at(iSV).size() > 1 ) SVWith2Jets.push_back( iSV );
+        if( idJetsToSV.at(iSV).size() >= 2 ) SVWith2Jets.push_back( iSV );
     }
-        
-
+                  
     // and run the selection:
     if( PVWithJet.size() == 1 ) {
         _cutFlow.at("4_HasPVJet") += 1;
-
+        for( unsigned int iSV = 0; iSV < secVertex_x->size(); ++iSV ) {
+          if( met > MET_CUT ) {
+            _histograms1D.at("nJetsSV").Fill( idJetsToSV.at(iSV).size(), evtWeight );
+          }
+        }
+        
         if( SVWith2Jets.size() > 0 ) {
             _cutFlow.at("5_HasSV20") += 1;
             
@@ -161,22 +227,141 @@ void LLGAnalysis::SignalRegionSelection() {
             }
             if( met > MET_CUT ) {
                 _cutFlow.at("6_MET") += 1;
-                   
+                 
+                bool hasDiJetPair100 = false;
+                
+                int nJets30 = 0;
+                double BJet1Pt = -1;
+                int idxBJet1 = -1; 
+                double BJet2Pt = -1;
+                int idxBJet2 = -1; 
+                double BJet3Pt = -1;
+                int idxBJet3 = -1; 
+                double BJet4Pt = -1;
+                int idxBJet4 = -1; 
+                for( unsigned int iJet = 0; iJet < recoJet_pt->size(); ++iJet ) {
+                  if( recoJet_pt->at(iJet) < JET_PT_CUT_SV ) continue;
+                  if( fabs(recoJet_eta->at(iJet)) > JET_ETA_CUT ) continue;
+                  nJets30++;
+                  if( recoJet_btag_combinedInclusiveSecondaryVertexV2BJetTags->at(iJet) > 0.814 ) {
+                    if( recoJet_pt->at(iJet) > BJet1Pt ) {
+                      BJet4Pt = BJet3Pt;
+                      idxBJet4 = idxBJet3;
+                      BJet3Pt = BJet2Pt;
+                      idxBJet3 = idxBJet2;
+                      BJet2Pt = BJet1Pt;
+                      idxBJet2 = idxBJet1;
+                      BJet1Pt = recoJet_pt->at(iJet);
+                      idxBJet1 = iJet;
+                    }
+                    else if( recoJet_pt->at(iJet) > BJet2Pt ) {
+                      BJet4Pt = BJet3Pt;
+                      idxBJet4 = idxBJet3;
+                      BJet3Pt = BJet2Pt;
+                      idxBJet3 = idxBJet2;
+                      BJet2Pt = recoJet_pt->at(iJet);
+                      idxBJet2 = iJet; 
+                    }
+                    else if( recoJet_pt->at(iJet) > BJet3Pt ) {
+                      BJet4Pt = BJet3Pt;
+                      idxBJet4 = idxBJet3;
+                      BJet3Pt = recoJet_pt->at(iJet);
+                      idxBJet3 = iJet; 
+                    }
+                    else if( recoJet_pt->at(iJet) > BJet3Pt ) {
+                      BJet4Pt = recoJet_pt->at(iJet);
+                      idxBJet4 = iJet; 
+                    }
+                  }
+                }
+                _histograms1D.at("nJetsTotal").Fill( nJets30, evtWeight );
+                _histograms1D.at("BJet1Pt").Fill( BJet1Pt, evtWeight );
+                _histograms1D.at("BJet2Pt").Fill( BJet2Pt, evtWeight );
+                _histograms1D.at("BJet3Pt").Fill( BJet3Pt, evtWeight );
+                _histograms1D.at("BJet4Pt").Fill( BJet4Pt, evtWeight );
+
+                for( unsigned int iSV = 0; iSV < secVertex_x->size(); ++iSV ) {
+                  if( idJetsToSV.at(iSV).size() <= 1 ) continue;
+                  _histograms1D.at("nJetsSV").Fill( idJetsToSV.at(iSV).size(), evtWeight );
+                  
+                  int idxLeadingJet = -1;
+                  double ptLeadingJet = -1.;
+                  int idxSubLeadingJet = -1;
+                  double ptSubLeadingJet = -1;
+                  int idxThirdLeadingJet = -1;
+                  double ptThirdLeadingJet = -1;
+                  int idxFourthLeadingJet = -1;
+                  double ptFourthLeadingJet = -1;
+
+                  for( unsigned int iJToSV = 0; iJToSV < idJetsToSV.at(iSV).size(); ++iJToSV ) {
+                    int jIdx = idJetsToSV.at(iSV).at(iJToSV);
+                    if( recoJet_pt->at(jIdx) > ptLeadingJet ) {
+                      idxFourthLeadingJet = idxThirdLeadingJet;
+                      ptFourthLeadingJet = ptThirdLeadingJet;
+                      idxThirdLeadingJet = idxSubLeadingJet;
+                      ptThirdLeadingJet = ptSubLeadingJet;
+                      idxSubLeadingJet = idxLeadingJet;
+                      ptSubLeadingJet = ptLeadingJet;
+                      idxLeadingJet = jIdx;
+                      ptLeadingJet = recoJet_pt->at(jIdx);
+                    }
+                    else if ( recoJet_pt->at(jIdx) > ptSubLeadingJet ) {
+                      idxFourthLeadingJet = idxThirdLeadingJet;
+                      ptFourthLeadingJet = ptThirdLeadingJet;
+                      idxThirdLeadingJet = idxSubLeadingJet;
+                      ptThirdLeadingJet = ptSubLeadingJet;
+                      idxSubLeadingJet = jIdx;
+                      ptSubLeadingJet = recoJet_pt->at(jIdx);
+                    }
+                    else if ( recoJet_pt->at(jIdx) > ptThirdLeadingJet ) {
+                      idxFourthLeadingJet = idxThirdLeadingJet;
+                      ptFourthLeadingJet = ptThirdLeadingJet;
+                      idxThirdLeadingJet = jIdx;
+                      ptThirdLeadingJet = recoJet_pt->at(jIdx);
+                    }
+                    else if ( recoJet_pt->at(jIdx) > ptFourthLeadingJet ) {
+                      idxFourthLeadingJet = jIdx;
+                      ptFourthLeadingJet = recoJet_pt->at(jIdx);
+                    }
+                  }
+                 
+
+                  _histograms1D.at("SVJet1Pt").Fill( ptLeadingJet, evtWeight );
+                  _histograms1D.at("SVJet2Pt").Fill( ptSubLeadingJet, evtWeight );
+                  _histograms1D.at("SVJet3Pt").Fill( ptThirdLeadingJet, evtWeight );
+                  _histograms1D.at("SVJet4Pt").Fill( ptFourthLeadingJet, evtWeight );
+                  TLorentzVector p4Jet1, p4Jet2;
+                  p4Jet1.SetPtEtaPhiM( recoJet_pt->at(idxLeadingJet), recoJet_eta->at(idxLeadingJet), recoJet_phi->at(idxLeadingJet), 0. );
+                  p4Jet2.SetPtEtaPhiM( recoJet_pt->at(idxSubLeadingJet), recoJet_eta->at(idxSubLeadingJet), recoJet_phi->at(idxSubLeadingJet), 0. );
+                  TLorentzVector p4DiJet = p4Jet1 + p4Jet2;
+                  _histograms1D.at("mJJSV").Fill( p4DiJet.M(), evtWeight );
+                  
+                  if( p4DiJet.M() > 100. ) hasDiJetPair100 = true;
+
+                }
+                
+                if( hasDiJetPair100 ) return;
+                _cutFlow.at("7_DiJetMass") += 1;
+
                 bool hasBjetFromSV = false;
                 for( unsigned int iSV = 0; iSV < secVertex_x->size(); ++iSV ) {
                   if( idJetsToSV.at(iSV).size() <= 1 ) continue;
                   int nBjets = 0;
                   for( unsigned int iJToSV = 0; iJToSV < idJetsToSV.at(iSV).size(); ++iJToSV ) {
                     int jIdx = idJetsToSV.at(iSV).at(iJToSV);
-                    if( recoJet_btag_combinedInclusiveSecondaryVertexV2BJetTags->at(jIdx) > 0.423 ) {
+                    //if( recoJet_btag_combinedInclusiveSecondaryVertexV2BJetTags->at(jIdx) > 0.814 ) {
+                    /*
+                    if( recoJet_btag_jetProbabilityBJetTags -> at(jIdx) > 0.790 ) { 
                       nBjets += 1;
                       hasBjetFromSV = true;
-                    }
+                    */
+                    //}
+                    
                   }
                   _histograms1D.at("nBjetAtSV").Fill(nBjets, evtWeight );
                 }
                 if( !hasBjetFromSV ) {
-                  _cutFlow.at("7_BVeto") += 1;
+                  _cutFlow.at("8_BVeto") += 1;
                 }
             }
         }
