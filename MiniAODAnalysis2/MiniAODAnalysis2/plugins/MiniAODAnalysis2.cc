@@ -90,12 +90,19 @@ class MiniAODAnalysis2 : public edm::EDAnalyzer {
       // the output file and tree
       TFile *fOutput = new TFile("RecoOutput.root", "RECREATE");
       TTree *tOutput = new TTree("RecoData", "RecoData");
-  
+      TTree *tMetaData = new TTree("MetaData", "MetaData" );
 
+      //setup the variables for the metadata tree first:
+      int nEventsProcessed = 0;
+      int nEventsAccepted = 0;
+
+      
       // the variables used for output
       // missing transverse energy
       double met = 0.;
-      
+      double met_x = 0.;
+      double met_y = 0.;
+
       // the jet variables
       std::vector<double> *jet_eta = new std::vector<double>;
       std::vector<double> *jet_phi = new std::vector<double>;
@@ -108,14 +115,18 @@ class MiniAODAnalysis2 : public edm::EDAnalyzer {
       std::vector<double> *muon_pz = new std::vector<double>;
       std::vector<double> *muon_eta = new std::vector<double>;
       std::vector<double> *muon_phi = new std::vector<double>;
-      
+      std::vector<double> *muon_iso = new std::vector<double>;
+      std::vector<bool> *muon_isTightMuon = new std::vector<bool>;
+      std::vector<bool> *muon_isLooseMuon = new std::vector<bool>;
+
       // the electron variables
       std::vector<double> *electron_px = new std::vector<double>;
       std::vector<double> *electron_py = new std::vector<double>;
       std::vector<double> *electron_pz = new std::vector<double>;
       std::vector<double> *electron_eta = new std::vector<double>;
       std::vector<double> *electron_phi = new std::vector<double>;
-     
+      std::vector<double> *electron_iso = new std::vector<double>;
+
       // the trigger bits and names
       std::vector<int> *triggerBits = new std::vector<int>;
       std::vector<std::string> *triggerNames = new std::vector<std::string>;
@@ -200,6 +211,33 @@ MiniAODAnalysis2::MiniAODAnalysis2(const edm::ParameterSet& iConfig):
    */
    
    triggerNames->push_back( "HLT_PFMET170_NoiseCleaned_v1" );
+   triggerNames->push_back("HLT_Ele27_eta2p1_WP85_Gsf_v1");
+   triggerNames->push_back("HLT_Ele32_eta2p1_WP85_Gsf_v1");
+   triggerNames->push_back("HLT_Ele22_eta2p1_WP85_Gsf_LooseIsoPFTau20_v1");
+   triggerNames->push_back("HLT_Ele27_eta2p1_WP85_Gsf_TriCentralPFJet40_v1");
+   triggerNames->push_back("HLT_Ele27_eta2p1_WP85_Gsf_TriCentralPFJet60_50_35_v1");
+   triggerNames->push_back("HLT_Ele27_eta2p1_WP85_Gsf_CentralPFJet30_BTagCSV_v1");
+   triggerNames->push_back("HLT_Ele32_eta2p1_WP85_Gsf_TriCentralPFJet40_v1");
+   triggerNames->push_back("HLT_Ele32_eta2p1_WP85_Gsf_TriCentralPFJet60_50_35_v1");
+   triggerNames->push_back("HLT_Ele32_eta2p1_WP85_Gsf_CentralPFJet30_BTagCSV_v1");
+   triggerNames->push_back("HLT_Ele45_CaloIdVT_GsfTrkIdT_PFJet200_PFJet50_v1");
+   triggerNames->push_back("HLT_Ele23_Ele12_CaloId_TrackId_Iso_v1");
+   triggerNames->push_back("HLT_Ele17_Ele12_Ele10_CaloId_TrackId_v1");
+   triggerNames->push_back("HLT_Ele95_CaloIdVT_GsfTrkIdT_v1");
+   triggerNames->push_back("HLT_Ele20WP60_Ele8_Mass55_v1");
+   triggerNames->push_back("HLT_Ele25WP60_SC4_Mass55_v1");
+   triggerNames->push_back("HLT_Mu40_v1");
+   triggerNames->push_back("HLT_Mu17_Mu8_v1");
+   triggerNames->push_back("HLT_Mu17_TkMu8_v1");
+   triggerNames->push_back("HLT_Mu30_TkMu11_v1");
+   triggerNames->push_back("HLT_Mu17_TrkIsoVVL_Mu8_TrkIsoVVL_v1");
+   triggerNames->push_back("HLT_Mu17_TrkIsoVVL_TkMu8_TrkIsoVVL_v1");
+   triggerNames->push_back("HLT_Mu25_TkMu0_dEta18_Onia_v1");
+   triggerNames->push_back("HLT_Mu38NoFiltersNoVtx_Photon38_CaloIdL_v1");
+   triggerNames->push_back("HLT_Mu42NoFiltersNoVtx_Photon42_CaloIdL_v1");
+   triggerNames->push_back("HLT_Mu40_eta2p1_PFJet200_PFJet50_v1");
+   triggerNames->push_back("HLT_Mu23_TrkIsoVVL_Ele12_Gsf_CaloId_TrackId_Iso_MediumWP_v1");
+   triggerNames->push_back("HLT_Mu8_TrkIsoVVL_Ele23_Gsf_CaloId_TrackId_Iso_MediumWP_v1");
    
   
    // the btag algorithms for which we want infos
@@ -241,11 +279,15 @@ MiniAODAnalysis2::MiniAODAnalysis2(const edm::ParameterSet& iConfig):
    tOutput -> Branch("RecoMuon_pz", &muon_py );
    tOutput -> Branch("RecoMuon_eta", &muon_eta );
    tOutput -> Branch("RecoMuon_phi", &muon_phi );
+   tOutput -> Branch("RecoMuon_iso", &muon_iso);
+   tOutput -> Branch("RecoMuon_isTightMuon", &muon_isTightMuon );
+   tOutput -> Branch("RecoMuon_isLooseMuon", &muon_isLooseMuon );
    tOutput -> Branch("RecoElectron_px", &electron_px );
    tOutput -> Branch("RecoElectron_py", &electron_pz );
    tOutput -> Branch("RecoElectron_pz", &electron_py );
    tOutput -> Branch("RecoElectron_eta", &electron_eta );
    tOutput -> Branch("RecoElectron_phi", &electron_phi );
+   tOutput -> Branch("RecoElectron_iso", &electron_iso );
    tOutput -> Branch("TriggerBits", &triggerBits );
    tOutput -> Branch("TriggerNames", &triggerNames );
    tOutput -> Branch("RecoVertex_x", &vertex_x );
@@ -257,10 +299,15 @@ MiniAODAnalysis2::MiniAODAnalysis2(const edm::ParameterSet& iConfig):
    tOutput -> Branch("RecoVertex_nTracks", &vertex_nTracks );
    tOutput -> Branch("RecoVertex_pt", &vertex_pt );
    tOutput -> Branch("MET", &met );
+   tOutput -> Branch("MET_x", &met_x );
+   tOutput -> Branch("MET_y", &met_y );
    tOutput -> Branch("EventNumber", &EventNumber );
    tOutput -> Branch("RunNumber", &RunNumber );
    tOutput -> Branch("LuminosityBlock", &LuminosityBlock );
   
+   // the metadata tree
+   tMetaData -> Branch("nEventsProcessed", &nEventsProcessed );
+   tMetaData -> Branch("nEventsAccepted", &nEventsAccepted );
 }
 
 
@@ -283,18 +330,26 @@ MiniAODAnalysis2::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetu
 {
    using namespace edm;
   
+   nEventsProcessed += 1;
+
    // clear all variables
    met = 0.;
+   met_x = 0.;
+   met_y = 0.;
    muon_px->clear();
    muon_py->clear();
    muon_pz->clear();
    muon_eta->clear();
    muon_phi->clear();
+   muon_iso->clear();
+   muon_isTightMuon->clear();
+   muon_isLooseMuon->clear();
    electron_px->clear();
    electron_py->clear();
    electron_pz->clear();
    electron_eta->clear();
    electron_phi->clear();
+   electron_iso->clear();
    triggerBits->clear();
    jet_eta->clear();
    jet_phi->clear();
@@ -399,13 +454,16 @@ MiniAODAnalysis2::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetu
       double pfRelIso = ( m.pfIsolationR04().sumChargedHadronPt 
                         + std::max(0., m.pfIsolationR04().sumNeutralHadronEt + m.pfIsolationR04().sumPhotonEt - 0.5*m.pfIsolationR04().sumPUPt ) ) 
                         / m.pt();
-      if( pfRelIso > 0.2 ) continue;
-
+      //if( pfRelIso > 0.2 ) continue;
+      
       muon_px->push_back( m.px() );
       muon_py->push_back( m.pz() );
       muon_pz->push_back( m.py() );
       muon_phi->push_back( m.phi() );
       muon_eta->push_back( m.eta() );
+      muon_iso->push_back( pfRelIso );
+      muon_isLooseMuon->push_back( m.isLooseMuon() );
+      muon_isTightMuon->push_back( m.isTightMuon(vertices->at(0)) );
    }
    
    // store only events without muons
@@ -457,13 +515,14 @@ MiniAODAnalysis2::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetu
          }  
       }
       double iso = charged + std::max(0.0, neutral-0.5*pileup) / e.pt();
-      if( iso >= 0.15 ) continue;
+      //if( iso >= 0.15 ) continue;
     
       electron_px->push_back( e.px() );
       electron_py->push_back( e.pz() );
       electron_pz->push_back( e.py() );
       electron_phi->push_back( e.phi() );
       electron_eta->push_back( e.eta() );
+      electron_iso->push_back( iso );
    }
 
    // store only events without electrons
@@ -657,8 +716,11 @@ MiniAODAnalysis2::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetu
    // and fill the met
    const pat::MET &themet = mets->front();
    met = themet.pt(); 
+   met_x = themet.px();
+   met_y = themet.py();
 
    // finally, write it to the tree
+   nEventsAccepted += 1;
    tOutput->Fill(); 
 
 }
@@ -674,11 +736,14 @@ void
 MiniAODAnalysis2::endJob() 
 {
 
+  // save the metadata tree
+  tMetaData->Fill();
+
   // save the output tree and file
   gDirectory = fOutput;
   tOutput->Write();
+  tMetaData->Write();
   fOutput->Close();
-
 }
 
 // ------------ method called when starting to processes a run  ------------
