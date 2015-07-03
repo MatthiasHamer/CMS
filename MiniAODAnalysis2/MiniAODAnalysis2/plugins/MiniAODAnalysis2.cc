@@ -238,7 +238,6 @@ MiniAODAnalysis2::MiniAODAnalysis2(const edm::ParameterSet& iConfig):
    triggerNames->push_back("HLT_Mu40_eta2p1_PFJet200_PFJet50_v1");
    triggerNames->push_back("HLT_Mu23_TrkIsoVVL_Ele12_Gsf_CaloId_TrackId_Iso_MediumWP_v1");
    triggerNames->push_back("HLT_Mu8_TrkIsoVVL_Ele23_Gsf_CaloId_TrackId_Iso_MediumWP_v1");
-   
   
    // the btag algorithms for which we want infos
    btagAlgorithms.push_back("jetBProbabilityBJetTags");
@@ -428,11 +427,12 @@ MiniAODAnalysis2::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetu
     
    const edm::TriggerNames &names = iEvent.triggerNames(*evTriggerBits);
    bool passTrigger = false;
-   for(unsigned int i = 0; i < evTriggerBits->size(); ++i ) {
-      for( unsigned int j = 0; j < triggerNames->size(); ++j ) {
+   for( unsigned int j = 0; j < triggerNames->size(); ++j ) {
+    for(unsigned int i = 0; i < evTriggerBits->size(); ++i ) {
         if( names.triggerName(i) == triggerNames->at(j) ) {
           triggerBits->push_back( evTriggerBits->accept(i) ? 1 : 0 );
           if( evTriggerBits->accept(i) ) passTrigger = true;
+          continue;
         }
       }
    }
