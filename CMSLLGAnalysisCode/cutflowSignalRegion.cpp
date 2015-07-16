@@ -80,7 +80,10 @@ void LLGAnalysis::SignalRegionSelection() {
       for( unsigned int iEle = 0; iEle < electron_px->size(); ++iEle ) {
         double pt = sqrt(electron_px->at(iEle)*electron_px->at(iEle) + electron_py->at(iEle)*electron_py->at(iEle));
         if( pt <= ELECTRON_PT_CUT ) continue;
-        //if( electron_iso->at(iEle) / pt >= 0.15 ) continue;
+        // this is dirty but needs to be done to account for different version of ntuples
+        if( electron_iso->size() > 0) {
+          if( electron_iso->at(iEle) / pt >= 0.15 ) continue;
+        }
         double eeta = electron_eta->at(iEle);
         double ephi = electron_phi->at(iEle);
         double deta = fabs(eeta - jeta);
@@ -92,7 +95,9 @@ void LLGAnalysis::SignalRegionSelection() {
       for( unsigned int iMuon = 0; iMuon < muon_px->size(); ++iMuon ) {
         double pt = sqrt(muon_px->at(iMuon)*muon_px->at(iMuon) + muon_py->at(iMuon)*muon_py->at(iMuon));
         if( pt <= MUON_PT_CUT ) continue;
-        //if( muon_iso->at(iMuon) / pt  > 0.2 ) continue;
+        if( muon_iso->size() > 0 ) {
+          if( muon_iso->at(iMuon) / pt  > 0.2 ) continue;
+        }
         double eeta = muon_eta->at(iMuon);
         double ephi = muon_phi->at(iMuon);
         double deta = fabs(eeta - jeta);
@@ -112,7 +117,9 @@ void LLGAnalysis::SignalRegionSelection() {
     bool hasMuon = false;
     for( unsigned int im = 0; im < muon_px->size(); ++im ) {
         double pt = sqrt(muon_px->at(im)*muon_px->at(im) + muon_py->at(im)*muon_py->at(im));
-        //if( muon_iso->at(im) / pt  > 0.2 ) continue;
+        if( muon_iso->size() > 0 ) {
+          if( muon_iso->at(im) / pt  > 0.2 ) continue;
+        }
         if( pt > MUON_PT_CUT ) hasMuon = true;
     }
     if( hasMuon ) return; 
@@ -122,7 +129,9 @@ void LLGAnalysis::SignalRegionSelection() {
     bool hasElectron = false;
     for( unsigned int im = 0; im < electron_px->size(); ++im ) {
         double pt = sqrt(electron_px->at(im)*electron_px->at(im) + electron_py->at(im)*electron_py->at(im));
-        //if( electron_iso->at(im) / pt >= 0.15 ) continue;
+        if( electron_iso->size() > 0 ) {
+          if( electron_iso->at(im) / pt >= 0.15 ) continue;
+        }
         if( pt > ELECTRON_PT_CUT ) hasElectron = true;
     }
     if( hasElectron ) return;
