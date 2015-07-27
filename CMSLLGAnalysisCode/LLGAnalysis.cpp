@@ -1,6 +1,7 @@
 #include "LLGAnalysis.h"
 #include "TGraphAsymmErrors.h"
 #include <fstream>
+#include <iomanip>
 
 LLGAnalysis* LLGAnalysis::GetInstance( char *configFileName ) {
     if( !_instance ) {
@@ -16,6 +17,8 @@ LLGAnalysis::LLGAnalysis( char *configFileName ) {
     JET_PT_CUT_SV = 30;
     JET_PT_CUT_PV = 75;
     JET_ETA_CUT = 5.0;
+    LEADING_SV_JET_CUT = 10000.;
+    MJJ_CUT = 10000;
     MUON_PT_CUT = 15.;
     ELECTRON_PT_CUT = 15.;
     MET_CUT = 210.;
@@ -26,6 +29,7 @@ LLGAnalysis::LLGAnalysis( char *configFileName ) {
     SELECTION = "SignalRegion";
     metadataFileName = "Configuration/DatasetMetadata.txt";
     datasetName = "Signal_500_60";
+    _writeOutputTree = true;
 
     ifstream configFile( configFileName, ios::in );
     while( configFile.good() ) {
@@ -47,8 +51,14 @@ LLGAnalysis::LLGAnalysis( char *configFileName ) {
         if( key == "Selection"         ) SELECTION = value;
         if( key == "MetadataFileName"  ) metadataFileName = value;
         if( key == "DatasetName"       ) datasetName = value;
+        if( key == "WriteOutputTree"   ) _writeOutputTree = (bool)(atoi(value.c_str()));
+        if( key == "LEADING_SV_JET_CUT" ) LEADING_SV_JET_CUT = atof(value.c_str());
+        if( key == "MJJ_CUT"           ) MJJ_CUT = atof(value.c_str());
     }
-    
+    _outputFileName = datasetName + "_tree.root";
+    _outputFile = new TFile( _outputFileName.c_str(), "RECREATE" );
+    _outputTree = new TTree( _inputTreeName.c_str(), _inputTreeName.c_str() );
+
     bool foundMetadata = false;
     ifstream metadataFile( metadataFileName, ios::in );
     while( metadataFile.good() ) {
@@ -66,7 +76,7 @@ LLGAnalysis::LLGAnalysis( char *configFileName ) {
       cout << "Did not find dataset " << datasetName << " in " << metadataFileName << ". Using standard values for xsec and ntot: " << PROC_XSEC << " " << PROC_NTOT << endl;
     }
     evtWeight = applyEventWeights ? PROC_XSEC/PROC_NTOT * TARGET_LUMI : 1.;
-
+    std::cout << "evtWeight is " << evtWeight << std::endl;
 }
 
 void LLGAnalysis::MakeEfficiencyPlot( TH1D hpass, TH1D htotal, TCanvas *c, string triggerName ) {
@@ -261,6 +271,51 @@ bool LLGAnalysis::Init() {
     _inputTree->SetBranchAddress("MET", &met );
     _inputTree->SetBranchAddress("MET_x", &met_x );
     _inputTree->SetBranchAddress("MET_y", &met_y );
+    
+    _outputTree->Branch("RecoMuon_px", &muon_px );
+    _outputTree->Branch("RecoMuon_py", &muon_py );
+    _outputTree->Branch("RecoMuon_pz", &muon_pz );
+    _outputTree->Branch("RecoMuon_eta", &muon_eta );
+    _outputTree->Branch("RecoMuon_phi", &muon_phi );
+    _outputTree->Branch("RecoMuon_iso", &muon_iso );
+    _outputTree->Branch("RecoMuon_isLooseMuon", &muon_isLooseMuon );
+    _outputTree->Branch("RecoMuon_isTightMuon", &muon_isTightMuon );
+    _outputTree->Branch("RecoElectron_px", &electron_px );
+    _outputTree->Branch("RecoElectron_py", &electron_py );
+    _outputTree->Branch("RecoElectron_pz", &electron_pz );
+    _outputTree->Branch("RecoElectron_eta", &electron_eta );
+    _outputTree->Branch("RecoElectron_phi", &electron_phi );
+    _outputTree->Branch("RecoElectron_iso", &electron_iso );
+    _outputTree->Branch("TriggerNames", &triggerNames );
+    _outputTree->Branch("TriggerBits", &triggerBits );
+    _outputTree->Branch("RecoJet_pt", &recoJet_pt );
+    _outputTree->Branch("RecoJet_eta", &recoJet_eta );
+    _outputTree->Branch("RecoJet_phi", &recoJet_phi );
+    _outputTree->Branch("RecoJet_btag_combinedInclusiveSecondaryVertexV2BJetTags", &recoJet_btag_combinedInclusiveSecondaryVertexV2BJetTags );
+    _outputTree->Branch("RecoJet_btag_jetBProbabilityBJetTags", &recoJet_btag_jetBProbabilityBJetTags );
+    _outputTree->Branch("RecoJet_btag_jetProbabilityBJetTags", &recoJet_btag_jetProbabilityBJetTags );
+    _outputTree->Branch("RecoJet_btag_trackCountingHighPurBJetTags", &recoJet_btag_trackCountingHighPurBJetTags );
+    _outputTree->Branch("RecoJet_btag_trackCountingHighEffBJetTags", &recoJet_btag_trackCountingHighEffBJetTags );
+    _outputTree->Branch("RecoJet_constVertex_x", &recoJet_constVertex_x );
+    _outputTree->Branch("RecoJet_constVertex_y", &recoJet_constVertex_y );
+    _outputTree->Branch("RecoJet_constVertex_z", &recoJet_constVertex_z );
+    _outputTree->Branch("RecoJet_const_pt", &recoJet_const_pt );
+    _outputTree->Branch("RecoJet_const_charge", &recoJet_const_charge );
+    _outputTree->Branch("RecoJet_const_closestVertex_dxy", &recoJet_const_closestVertex_dxy );
+    _outputTree->Branch("RecoJet_const_closestVertex_dz", &recoJet_const_closestVertex_dz );
+    _outputTree->Branch("RecoJet_const_closestVertex_d", &recoJet_const_closestVertex_d );
+    _outputTree->Branch("RecoVertex_x", &vertex_x );
+    _outputTree->Branch("RecoVertex_y", &vertex_y );
+    _outputTree->Branch("RecoVertex_z", &vertex_z );
+    _outputTree->Branch("RecoSecVertex_x", &secVertex_x );
+    _outputTree->Branch("RecoSecVertex_y", &secVertex_y );
+    _outputTree->Branch("RecoSecVertex_z", &secVertex_z );
+    _outputTree->Branch("RecoVertex_nTracks", &vertex_nTracks );
+    _outputTree->Branch("RecoVertex_pt", &vertex_pt );
+    _outputTree->Branch("MET", &met );
+    _outputTree->Branch("MET_x", &met_x );
+    _outputTree->Branch("MET_y", &met_y );
+  
 
     // crate eps, png and pdf in the end
     _plotFormats.push_back(".eps");
@@ -371,6 +426,19 @@ void LLGAnalysis::FinishRun() {
       (*itr_h).second.Write();
     }
     fHistOutput->Close();
+
+    gDirectory = _outputFile;
+    _outputTree->Write();
+    _outputFile->Close();
+
+  
+    cout << "PRINTING 2D OPTIMISATION MATRIX : " << endl;
+    for( unsigned int i = 0; i < _yields2DOptimisation.size(); ++i ) {
+      for( unsigned int j = 0; j < _yields2DOptimisation.at(i).size(); ++j ) {
+        cout << std::setw(8) << _yields2DOptimisation.at(i).at(j) << " ";
+      }
+      cout << endl;
+    }
 
     delete _inputTree;
     delete recoJet_pt;

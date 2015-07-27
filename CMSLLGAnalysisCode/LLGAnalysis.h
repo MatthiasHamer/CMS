@@ -61,6 +61,10 @@ class LLGAnalysis {
         vector<string>          _inputFileNames;
         string                  _inputTreeName;
         TChain                  *_inputTree;
+        string                  _outputFileName;
+        TTree                   *_outputTree;
+        TFile                   *_outputFile;
+        bool                    _writeOutputTree;
 
         vector<double> *recoJet_pt; 
         vector<double> *recoJet_phi; 
@@ -116,9 +120,12 @@ class LLGAnalysis {
         double MUON_PT_CUT;
         double ELECTRON_PT_CUT;
         double MET_CUT;
+        double LEADING_SV_JET_CUT;
+        double MJJ_CUT;
         std::string SELECTION;
         std::string metadataFileName;
         std::string datasetName;
+        std::vector<std::vector<double> > _yields2DOptimisation;
 
         // the total number of events per sample (take it from DAS!)
         double PROC_NTOT;
